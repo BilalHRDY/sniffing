@@ -1,53 +1,103 @@
 
-#include <pcap/pcap.h>
+// #include <arpa/inet.h>
+// #include <netdb.h>
+// #include <stdio.h>
+// #include <string.h>
+// #include <sys/socket.h>
+// #include <sys/types.h>
+
+// int main(int argc, char *argv[]) {
+
+//   struct addrinfo hints, *res, *p;
+//   void *addr;
+//   int status;
+//   char ipstr[INET6_ADDRSTRLEN], ipver;
+
+//   if (argc != 2) {
+//     fprintf(stderr, "usage: showip hostname\n");
+//     return 1;
+//   }
+
+//   memset(&hints, 0, sizeof hints);
+//   hints.ai_family = AF_UNSPEC;     // IPv4 ou IPv6
+//   hints.ai_socktype = SOCK_STREAM; // Une seule famille de socket
+
+//   if ((status = getaddrinfo(argv[1], NULL, &hints, &res)) != 0) {
+//     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+//     return 2;
+//   }
+
+//   printf("IP addresses for %s:\n\n", argv[1]);
+
+//   p = res;
+//   while (p != NULL) {
+
+//     // Identification de l'adresse courante
+//     if (p->ai_family == AF_INET) { // IPv4
+//       struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+//       addr = &(ipv4->sin_addr);
+//       ipver = '4';
+//     } else { // IPv6
+//       struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
+//       addr = &(ipv6->sin6_addr);
+//       ipver = '6';
+//     }
+
+//     // Conversion de l'adresse IP en une chaîne de caractères
+//     inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
+//     printf(" IPv%c: %s\n", ipver, ipstr);
+
+//     // Adresse suivante
+//     p = p->ai_next;
+//   }
+
+//   // Libération de la mémoire occupée par les enregistrements
+//   freeaddrinfo(res);
+
+//   return 0;
+// }
+
+#include "hashmap.h"
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-void call_me(u_char *user, const struct pcap_pkthdr *pkthdr,
-             const u_char *packetd_ptr) {
-  printf("You just recieved a packet!\n");
-  printf("ts : %ld caplen : %u len : %u\n", pkthdr->ts.tv_sec, pkthdr->caplen,
-         pkthdr->len);
+int main() {
+  ht *table = ht_create();
 
-  char ip[32] = "";
-  char buf[8] = "";
-  for (u_int i = 0; i < 5; i++) {
-    printf("%d.", packetd_ptr[i]);
+  int *a = malloc(4);
+  int *b = malloc(4);
+  int *c = malloc(4);
+  int *d = malloc(4);
+  int *a2 = malloc(4);
+  *a = 11;
+  *b = 2;
+  *c = 3;
+  *d = 4;
+  *a2 = 44;
 
-    snprintf(buf, sizeof(buf), "%u", packetd_ptr[i]);
-    if (i < 4) {
-      strcat(buf, ".");
-    }
-    strcat(ip, buf);
-  }
+  char *key1 = "a";
+  char *key2 = "b";
+  char *key3 = "c";
+  char *key4 = "d";
 
-  printf("\n");
+  ht_set(table, key1, a);
+  //   printf("a : %d\n", *(int *)ht_get(table, key1));
 
-  for (u_int i = 0; i < 5; i++) {
-    printf("%02x ", packetd_ptr[i]); // lecture seule
-  }
-  printf("\n");
+  ht_set(table, key2, b);
 
-  printf("ip: %s\n", ip);
-}
+  ht_set(table, key3, c);
+  //   ht_set(table, key4, d);
 
-int main(int argc, char const *argv[]) {
-  char *device = "en0"; // remember to replace this with your device name
-  char error_buffer[PCAP_ERRBUF_SIZE];
-  int packets_count = 2;
+  // reset
+  //   ht_set(table, key2, a2);
+  //   ht_set(table, key2, b);
+  //   ht_set(table, key2, a2);
+  //   ht_set(table, key2, a2);
+  //   ht_set(table, key2, b);
 
-  pcap_t *capdev = pcap_open_live(device, BUFSIZ, 0, 1000, error_buffer);
-
-  if (capdev == NULL) {
-    printf("ERR: pcap_open_live() %s\n", error_buffer);
-    exit(1);
-  }
-
-  if (pcap_loop(capdev, packets_count, call_me, (u_char *)NULL)) {
-    printf("ERR: pcap_loop() failed!\n");
-    exit(1);
-  }
-
-  return 0;
+  //   printf("a : %d\n", *(int *)ht_get(table, key1));
+  printf("b : %d\n", *(int *)ht_get(table, key2));
+  printf("c : %d\n", *(int *)ht_get(table, key3));
+  //   printf("d : %d\n", *(int *)ht_get(table, key4));
 }
