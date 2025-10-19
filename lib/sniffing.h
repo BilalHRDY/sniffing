@@ -1,10 +1,8 @@
 #ifndef SNIFFING_H
 #define SNIFFING_H
-
+#include "utils/hashmap.h"
 #include <netdb.h>
 
-addrinfo * fetch_host_addresses(char *domain);
-
-
+void *init_hosts_table_and_filter(ht *table, char *domains[], char **filter);
 
 #endif

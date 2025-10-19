@@ -1,103 +1,92 @@
-
-// #include <arpa/inet.h>
-// #include <netdb.h>
-// #include <stdio.h>
-// #include <string.h>
-// #include <sys/socket.h>
-// #include <sys/types.h>
-
-// int main(int argc, char *argv[]) {
-
-//   struct addrinfo hints, *res, *p;
-//   void *addr;
-//   int status;
-//   char ipstr[INET6_ADDRSTRLEN], ipver;
-
-//   if (argc != 2) {
-//     fprintf(stderr, "usage: showip hostname\n");
-//     return 1;
-//   }
-
-//   memset(&hints, 0, sizeof hints);
-//   hints.ai_family = AF_UNSPEC;     // IPv4 ou IPv6
-//   hints.ai_socktype = SOCK_STREAM; // Une seule famille de socket
-
-//   if ((status = getaddrinfo(argv[1], NULL, &hints, &res)) != 0) {
-//     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-//     return 2;
-//   }
-
-//   printf("IP addresses for %s:\n\n", argv[1]);
-
-//   p = res;
-//   while (p != NULL) {
-
-//     // Identification de l'adresse courante
-//     if (p->ai_family == AF_INET) { // IPv4
-//       struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
-//       addr = &(ipv4->sin_addr);
-//       ipver = '4';
-//     } else { // IPv6
-//       struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
-//       addr = &(ipv6->sin6_addr);
-//       ipver = '6';
-//     }
-
-//     // Conversion de l'adresse IP en une chaîne de caractères
-//     inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
-//     printf(" IPv%c: %s\n", ipver, ipstr);
-
-//     // Adresse suivante
-//     p = p->ai_next;
-//   }
-
-//   // Libération de la mémoire occupée par les enregistrements
-//   freeaddrinfo(res);
-
-//   return 0;
-// }
-
-#include "hashmap.h"
+#include "lib/sniffing.h"
+#include "lib/utils/hashmap.h"
 #include <arpa/inet.h>
+#include <pcap/pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
+struct Session {
+  time_t firstVisit;
+  time_t lastVisit;
+  u_int ip;
+} Session;
 
-int main() {
+void call_me(u_char *context, const struct pcap_pkthdr *pkthdr,
+             const u_char *packetd_ptr) {
+  printf("You just recieved a packet!\n");
+  printf("secondes : %ld caplen : %u len : %u\n", pkthdr->ts.tv_sec,
+         pkthdr->caplen, pkthdr->len);
+  // struct Session **sessions = (struct Session **)context;
+
+  char ip[16] = "";
+  int pos = 0;
+  int version;
+  version = packetd_ptr[14] >> 4;
+
+  // printf("version : %u\n", version);
+  uint32_t ip_num = (packetd_ptr[30] << 24) | (packetd_ptr[31] << 16) |
+                    (packetd_ptr[32] << 8) | (packetd_ptr[33]);
+
+  printf("ip number recu : %u\n", ip_num);
+  // printf("ip number enregistré : %u\n", sessions[0]->ip);
+
+  // if (sessions[0]->ip == 0) {
+
+  //   sessions[0]->ip = ip_num;
+  //   sessions[0]->firstVisit = pkthdr->ts.tv_sec;
+  // }
+  printf("ip : %s", ip);
+  // if (sessions[0]->ip == )
+  printf("\n");
+}
+
+int main(int argc, char const *argv[]) {
+  char *device = "en0";
+  char error_buffer[PCAP_ERRBUF_SIZE];
+  int packets_count = 2;
+
+  int status;
+  char ipstr[INET6_ADDRSTRLEN], ipver;
+  char *filter;
   ht *table = ht_create();
 
-  int *a = malloc(4);
-  int *b = malloc(4);
-  int *c = malloc(4);
-  int *d = malloc(4);
-  int *a2 = malloc(4);
-  *a = 11;
-  *b = 2;
-  *c = 3;
-  *d = 4;
-  *a2 = 44;
+  if (argc < 2) {
+    fprintf(stderr, "You have to specified hostname!\n");
+    exit(EXIT_FAILURE);
+  }
+  init_hosts_table_and_filter(table, argv + 1, &filter);
 
-  char *key1 = "a";
-  char *key2 = "b";
-  char *key3 = "c";
-  char *key4 = "d";
+  print_table(table);
+  struct bpf_program fp;
 
-  ht_set(table, key1, a);
-  //   printf("a : %d\n", *(int *)ht_get(table, key1));
+  struct Session *sessions[3];
+  sessions[0] = malloc(sizeof(Session));
 
-  ht_set(table, key2, b);
+  pcap_t *handle;
+  bpf_u_int32 net, mask;
 
-  ht_set(table, key3, c);
-  //   ht_set(table, key4, d);
+  pcap_lookupnet("en0", &net, &mask, error_buffer);
 
-  // reset
-  //   ht_set(table, key2, a2);
-  //   ht_set(table, key2, b);
-  //   ht_set(table, key2, a2);
-  //   ht_set(table, key2, a2);
-  //   ht_set(table, key2, b);
+  handle = pcap_open_live(device, BUFSIZ, 0, 1000, error_buffer);
 
-  //   printf("a : %d\n", *(int *)ht_get(table, key1));
-  printf("b : %d\n", *(int *)ht_get(table, key2));
-  printf("c : %d\n", *(int *)ht_get(table, key3));
-  //   printf("d : %d\n", *(int *)ht_get(table, key4));
+  if (handle == NULL) {
+    fprintf(stderr, "Erreur: %s\n", error_buffer);
+    exit(EXIT_FAILURE);
+  }
+
+  if (pcap_compile(handle, &fp, filter, 1, mask)) {
+    fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(handle));
+    exit(EXIT_FAILURE);
+  }
+  if (pcap_setfilter(handle, &fp) == -1) {
+    fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(handle));
+    exit(EXIT_FAILURE);
+  }
+  if (pcap_loop(handle, packets_count, call_me, (u_char *)sessions)) {
+    fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(handle));
+    exit(EXIT_FAILURE);
+  }
+
+  return 0;
 }

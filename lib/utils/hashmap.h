@@ -7,15 +7,15 @@
 // Must be a power of 2
 #define INITIAL_CAPACITY 8
 
-typedef struct Item {
+typedef struct item {
   const char *key;
   void *value;
-} Item; // 16 bytes
+} item; // 16 bytes
 
 typedef struct ht {
-  int capacity;
-  int count;
-  Item *items;
+  size_t capacity;
+  size_t count;
+  item *items;
 } ht;
 
 // Create hash table and return pointer to it, or NULL if out of memory.
@@ -26,7 +26,7 @@ void ht_destroy(ht *table);
 
 // Get item with given key (NUL-terminated) from hash table. Return
 // value (which was set with ht_set), or NULL if key not found.
-int *ht_get(ht *table, const char *key);
+void *ht_get(ht *table, const char *key);
 
 // Set item with given key (NUL-terminated) to value (which must not
 // be NULL). If not already present in table, key is copied to newly
@@ -54,5 +54,5 @@ hti ht_iterator(ht *table);
 // and value to current item, and return true. If there are no more
 // items, return false. Don't call ht_set during iteration.
 bool ht_next(hti *it);
-
+void print_table(ht *table);
 #endif
