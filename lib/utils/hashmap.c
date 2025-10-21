@@ -1,4 +1,5 @@
 #include "hashmap.h"
+#include "../sniffing.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,11 +9,27 @@
 #define FNV_OFFSET 14695981039346656037UL
 #define FNV_PRIME 1099511628211UL
 
-void print_table(ht *table) {
+void print_hash_table(ht *table) {
   for (int i = 0; i < table->capacity; i++)
     if (table->items[i].value != NULL)
       printf("key: %s, value: %s\n", table->items[i].key,
              (char *)table->items[i].value);
+    else
+      printf("key: %s, value: %p\n", table->items[i].key,
+             table->items[i].value);
+  printf("\n");
+}
+
+void print_session_table(ht *table) {
+  for (int i = 0; i < table->capacity; i++)
+    if (table->items[i].value != NULL) {
+      printf("key: %s, value: %p -> ", table->items[i].key,
+             (session *)table->items[i].value);
+      session *s = (session *)table->items[i].value;
+      printf("{firstVisit: %ld,lastVisit: %ld, total_duration %d}\n",
+             s->firstVisit, s->lastVisit, s->total_duration);
+    }
+
     else
       printf("key: %s, value: %p\n", table->items[i].key,
              table->items[i].value);
@@ -125,7 +142,6 @@ void ht_set(ht *table, const char *key, void *value) {
 void *ht_get(ht *table, const char *key) {
   uint64_t h = hash(key);
   size_t index = (size_t)(h & (uint64_t)(table->capacity - 1));
-
   while (table->items[index].key != NULL) {
     if (strcmp(key, table->items[index].key) == 0) {
       return table->items[index].value;

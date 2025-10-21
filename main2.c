@@ -8,22 +8,112 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-int main(int argc, char *argv[]) {
+#include <pcap.h>
+#include <pthread.h>
+#include <sqlite3.h>
+#include <unistd.h>
 
-  int status;
-  char ipstr[INET6_ADDRSTRLEN], ipver;
-  ht *table = ht_create();
+#define MAX_QUEUE 10000
 
-  printf("size of : %d\n", argc);
-  if (argc < 2) {
-    fprintf(stderr, "You have to specified hostname!\n");
-    exit(EXIT_FAILURE);
+typedef struct {
+  char src_ip[64];
+  char dst_ip[64];
+  unsigned short src_port;
+  unsigned short dst_port;
+  long timestamp;
+} PacketInfo;
+
+PacketInfo queue[MAX_QUEUE];
+int queue_size = 0;
+pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
+
+sqlite3 *db;
+
+// Thread d’écriture SQLite
+void *db_writer_thread(void *arg) {
+  while (1) {
+    pthread_mutex_lock(&queue_mutex);
+    while (queue_size == 0) {
+      pthread_cond_wait(&queue_cond, &queue_mutex);
+    }
+
+    // Copier la file localement pour relâcher le verrou rapidement
+    PacketInfo local[MAX_QUEUE];
+    int local_size = queue_size;
+    memcpy(local, queue, local_size * sizeof(PacketInfo));
+    queue_size = 0;
+    pthread_mutex_unlock(&queue_mutex);
+
+    // Insérer en batch dans SQLite
+    sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+    sqlite3_stmt *stmt;
+    sqlite3_prepare_v2(db,
+                       "INSERT INTO packets (src_ip, dst_ip, src_port, "
+                       "dst_port, timestamp) VALUES (?, ?, ?, ?, ?);",
+                       -1, &stmt, NULL);
+
+    for (int i = 0; i < local_size; i++) {
+      sqlite3_bind_text(stmt, 1, local[i].src_ip, -1, SQLITE_STATIC);
+      sqlite3_bind_text(stmt, 2, local[i].dst_ip, -1, SQLITE_STATIC);
+      sqlite3_bind_int(stmt, 3, local[i].src_port);
+      sqlite3_bind_int(stmt, 4, local[i].dst_port);
+      sqlite3_bind_int64(stmt, 5, local[i].timestamp);
+      sqlite3_step(stmt);
+      sqlite3_reset(stmt);
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_exec(db, "COMMIT;", NULL, NULL, NULL);
+  }
+  return NULL;
+}
+
+// Callback pcap
+void packet_handler(u_char *args, const struct pcap_pkthdr *header,
+                    const u_char *packet) {
+  PacketInfo info;
+  // Exemple simplifié, ici tu extrais les données TCP/IP
+  strcpy(info.src_ip, "192.168.0.1");
+  strcpy(info.dst_ip, "142.250.74.14"); // google.fr
+  info.src_port = 12345;
+  info.dst_port = 443;
+  info.timestamp = header->ts.tv_sec;
+
+  pthread_mutex_lock(&queue_mutex);
+  if (queue_size < MAX_QUEUE) {
+    queue[queue_size++] = info;
+    pthread_cond_signal(&queue_cond);
+  } else {
+    // File pleine — tu peux soit drop, soit flush immédiatement
+    fprintf(stderr, "Queue overflow, dropping packet.\n");
+  }
+  pthread_mutex_unlock(&queue_mutex);
+}
+
+int main() {
+  // Init SQLite
+  sqlite3_open("packets.db", &db);
+  sqlite3_exec(db,
+               "CREATE TABLE IF NOT EXISTS packets (src_ip TEXT, dst_ip TEXT, "
+               "src_port INT, dst_port INT, timestamp INT);",
+               NULL, NULL, NULL);
+
+  // Lancer le thread d’écriture
+  pthread_t writer;
+  pthread_create(&writer, NULL, db_writer_thread, NULL);
+
+  // Init pcap
+  char errbuf[PCAP_ERRBUF_SIZE];
+  pcap_t *handle = pcap_open_live("en0", BUFSIZ, 1, 1000, errbuf);
+  if (!handle) {
+    fprintf(stderr, "Error opening pcap: %s\n", errbuf);
+    return 1;
   }
 
-  init_table_addresses(table, argv + 1);
-
-  print_table(table);
-
+  pcap_loop(handle, 0, packet_handler, NULL);
+  pcap_close(handle);
+  sqlite3_close(db);
   return 0;
 }
 

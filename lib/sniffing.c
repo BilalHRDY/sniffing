@@ -54,9 +54,9 @@ void init_hosts_table_and_filter(ht *table, char *domains[], char **filter) {
   char ipstr[INET6_ADDRSTRLEN];
   void *addr;
 
-  *filter = strdup("ip or ip6 and (dst host ");
+  *filter = strdup("ip or ip6 and (src host ");
 
-  char *separator = " or dst host ";
+  char *separator = " or src host ";
   int is_last_ip = 0;
   for (size_t i = 0; domains[i] != NULL; i++) {
 
@@ -66,7 +66,6 @@ void init_hosts_table_and_filter(ht *table, char *domains[], char **filter) {
 
     while (p != NULL) {
       addr = get_ip_from_response(p);
-
       inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
       ht_set(table, ipstr, domains[i]);
 
@@ -80,3 +79,5 @@ void init_hosts_table_and_filter(ht *table, char *domains[], char **filter) {
 
   printf("filter: %s\n", *filter);
 }
+
+void create_or_edit_session() {}

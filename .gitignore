@@ -3,3 +3,4 @@ main
 *.o
 .DS_STORE
 .vscode
+*.db
