@@ -25,15 +25,27 @@ void print_session_table(ht *table) {
     if (table->items[i].value != NULL) {
       printf("key: %s, value: %p -> ", table->items[i].key,
              (session *)table->items[i].value);
-      session *s = (session *)table->items[i].value;
-      printf("{firstVisit: %ld,lastVisit: %ld, total_duration %d}\n",
-             s->firstVisit, s->lastVisit, s->total_duration);
+      printf("{first_visit: %ld,last_visit: %ld, time_to_save %d}\n",
+             ((session *)table->items[i].value)->first_visit,
+             ((session *)table->items[i].value)->last_visit,
+             ((session *)table->items[i].value)->time_to_save);
     }
 
     else
       printf("key: %s, value: %p\n", table->items[i].key,
              table->items[i].value);
   printf("\n");
+}
+
+void ht_destroy(ht *table) {
+  // First free allocated keys.
+  for (size_t i = 0; i < table->capacity; i++) {
+    free((void *)table->items[i].key);
+  }
+
+  // Then free entries array and table itself.
+  free(table->items);
+  free(table);
 }
 
 static uint64_t hash(const char *key) {
@@ -47,7 +59,6 @@ static uint64_t hash(const char *key) {
 
 ht *ht_create(void) {
   ht *table = malloc(sizeof(ht));
-
   if (table == NULL) {
     fprintf(stderr, "table initialization: out of memory!\n");
     exit(EXIT_FAILURE);
@@ -69,11 +80,11 @@ static void ht_set_entry(item *items, size_t capacity, const char *key,
   uint64_t h = hash(key);
   size_t index = (size_t)(h & (uint64_t)(capacity - 1));
 
-  // Loop till we find an empty entry.
   while (items[index].key != NULL) {
     if (strcmp(key, items[index].key) == 0) {
       // Found key (it already exists), update value.
       items[index].value = value;
+      return;
     }
     // Key wasn't in this slot, move to next (linear probing).
     index++;

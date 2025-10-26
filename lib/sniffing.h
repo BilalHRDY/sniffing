@@ -4,9 +4,11 @@
 #include <netdb.h>
 
 typedef struct session {
-  time_t firstVisit;
-  time_t lastVisit;
-  int total_duration;
+  // int id;
+  char *hostname;
+  time_t first_visit;
+  time_t last_visit;
+  int time_to_save;
 } session;
 
 void *init_hosts_table_and_filter(ht *table, char *domains[], char **filter);

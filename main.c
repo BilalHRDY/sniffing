@@ -1,5 +1,6 @@
 #include "lib/sniffing.h"
 #include "lib/utils/hashmap.h"
+#include "lib/utils/queue.h"
 #include <arpa/inet.h>
 #include <pcap/pcap.h>
 #include <pthread.h>
@@ -16,58 +17,87 @@ typedef struct context {
   pthread_t *db_writer_thread;
   ht *hosts_table;
   ht *sessions_table;
+  queue *q;
   int count;
 } context;
+
+session *create_session(time_t timestamp, char *hostname) {
+
+  session *s = malloc(sizeof(session));
+  if (s == NULL) {
+    fprintf(stderr, "malloc error for session!\n");
+    exit(EXIT_FAILURE);
+  }
+  s->hostname = hostname;
+  s->first_visit = timestamp;
+  s->last_visit = s->first_visit;
+  s->time_to_save = 0;
+  return s;
+}
+
+void get_ip_string_from_packets(const u_char *packet, char *ipstr) {
+  // dst:
+  uint32_t ip_src = (packet[33] << 24) | (packet[32] << 16) |
+                    (packet[31] << 8) | (packet[30]);
+  // src:
+  // uint32_t ip_src = (packet[29] << 24) | (packet[28] << 16) |
+  //                   (packet[27] << 8) | (packet[26]);
+
+  inet_ntop(AF_INET, &ip_src, ipstr, INET6_ADDRSTRLEN);
+}
 
 void packet_handler(u_char *user, const struct pcap_pkthdr *header,
                     const u_char *packet) {
 
+  char ipstr[INET6_ADDRSTRLEN];
   int version = packet[14] >> 4;
   context *ctx = (context *)user;
-
   ctx->count += 1;
+  // print_hash_table(ctx->hosts_table);
+  get_ip_string_from_packets(packet, ipstr);
+  char *hostname = ht_get(ctx->hosts_table, ipstr);
+  printf("\ncount %d, timestamp: %ld, host: %s\n", ctx->count,
+         header->ts.tv_sec, hostname);
   if (version == 4) {
-    uint32_t ip_src = (packet[29] << 24) | (packet[28] << 16) |
-                      (packet[27] << 8) | (packet[26]);
-
-    char ipstr[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET, &ip_src, ipstr, sizeof ipstr);
-
-    char *hostname = ht_get(ctx->hosts_table, ipstr);
-    // printf("hostname %s\n", hostname);
 
     session *s = ht_get(ctx->sessions_table, hostname);
-
     if (s == NULL) {
-      printf("create session\n");
-
-      session *new_session = malloc(sizeof(s));
-      new_session->firstVisit = header->ts.tv_sec;
-      new_session->lastVisit = new_session->firstVisit;
-      new_session->total_duration = 0;
-
-      ht_set(ctx->sessions_table, hostname, new_session);
-    } else {
-      printf("{firstVisit: %ld,lastVisit: %ld, total_duration %d}\n",
-             s->firstVisit, s->lastVisit, s->total_duration);
-
-      if (header->ts.tv_sec - s->lastVisit >= 5) {
-        printf("---------------------- RE-INIT --------------------  \n");
-        s->firstVisit = header->ts.tv_sec;
-        s->lastVisit = s->firstVisit;
-      } else {
-        printf("EDIT, count = %d\n", ctx->count);
-
-        s->total_duration += header->ts.tv_sec - s->lastVisit;
-        s->lastVisit = header->ts.tv_sec;
-      }
-    }
-    if (ctx->count > 10) {
+      printf("  create session, %s\n", hostname);
+      s = create_session(header->ts.tv_sec, hostname);
+      ht_set(ctx->sessions_table, hostname, s);
+      enqueue(ctx->q, s);
       pthread_cond_signal(&ctx->condition);
-      ctx->count = 0;
+
+      return;
     }
-    return;
-    // print_session_table(ctx->sessions_table);
+
+    else if (header->ts.tv_sec == s->last_visit) {
+      printf("  même timestamp que le paquet précédent\n");
+      return;
+    }
+
+    else if (header->ts.tv_sec - s->last_visit >= 30) {
+      printf("  RE-INIT --------------------  \n");
+      printf("  {first_visit: %ld,last_visit: %ld}\n", s->first_visit,
+             s->last_visit);
+      s->first_visit = header->ts.tv_sec;
+      s->last_visit = s->first_visit;
+      return;
+    } else {
+      printf("  EDIT\n");
+      printf("  {first_visit: %ld,last_visit: %ld\n", s->first_visit,
+             s->last_visit);
+      s->time_to_save += header->ts.tv_sec - s->last_visit;
+      s->last_visit = header->ts.tv_sec;
+      session *session_copy = malloc(sizeof(session));
+      memcpy(session_copy, s, sizeof(session));
+      enqueue(ctx->q, session_copy);
+      pthread_cond_signal(&ctx->condition);
+      s->time_to_save = 0;
+      printf("session_copy->time_save: %d\n",
+             ((session *)ctx->q->tail->value)->time_to_save);
+      return;
+    }
   }
 
   printf("ipv6\n");
@@ -76,19 +106,43 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
 };
 // pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
 
-static void *db_writer(void *data) {
-  printf("------------------------------------------------------ db_writer 1 "
-         "------------------ \n");
+static void *session_db_writer(void *data) {
+  printf("------------------ session_db_writer ------------------ \n");
 
+  context *ctx = (context *)data;
+  printf("is_empty: %d\n", is_empty(ctx->q));
   while (1) {
-    context *ctx = (context *)data;
-    printf("------------------------------------------------------ db_writer 2 "
-           "------------------ \n");
-
     pthread_cond_wait(&ctx->condition, &ctx->mutex);
-    sleep(3);
-    printf("------------------------------------------------------ insert to "
-           "db ------------------ \n");
+    while (!is_empty(ctx->q)) {
+      printf("---------------------------------------DB: prepare stmt\n");
+
+      const char *sql = "INSERT INTO sessions (HOSTNAME, TOTAL_DURATION)"
+                        "VALUES(?, ?) ON CONFLICT(HOSTNAME)"
+                        "DO UPDATE SET TOTAL_DURATION = TOTAL_DURATION + "
+                        "excluded.TOTAL_DURATION;";
+
+      sqlite3_stmt *stmt;
+      int rc = sqlite3_prepare_v2(ctx->db, sql, -1, &stmt, NULL);
+      if (rc != SQLITE_OK) {
+        fprintf(stderr, "Erreur de préparation: %s\n", sqlite3_errmsg(ctx->db));
+      }
+
+      session *s = (session *)dequeue(ctx->q);
+      if (s == NULL) {
+        printf("s is NULL\n");
+      }
+
+      sqlite3_bind_text(stmt, 1, s->hostname, -1, SQLITE_STATIC);
+      sqlite3_bind_int(stmt, 2, s->time_to_save);
+      printf("---------------------------------------DB: time_to_save: %d\n",
+             s->time_to_save);
+      rc = sqlite3_step(stmt);
+      if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Erreur d'exécution: %s\n", sqlite3_errmsg(ctx->db));
+      }
+      sqlite3_finalize(stmt);
+      printf("---------------------------------------DB: update done\n");
+    }
   }
 
   return NULL;
@@ -96,7 +150,7 @@ static void *db_writer(void *data) {
 
 int main(int argc, char const *argv[]) {
   sqlite3 *db;
-  char *database_name = "session.db";
+  char *database_name = "sniffing.db";
   char *errmsg;
   int rc;
   const char *sql;
@@ -109,9 +163,8 @@ int main(int argc, char const *argv[]) {
   }
 
   sql = "CREATE TABLE IF NOT EXISTS sessions("
-        "ID INT PRIMARY        KEY      NOT NULL,"
-        "FIRST_VISIT          INTEGER     NOT NULL,"
-        "LAST_VISIT          INTEGER     NOT NULL,"
+        "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "HOSTNAME          TEXT     NOT NULL UNIQUE,"
         "TOTAL_DURATION           INTEGER     NOT NULL);";
 
   rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
@@ -132,19 +185,24 @@ int main(int argc, char const *argv[]) {
   pthread_t db_writer_thread;
 
   context *ctx = malloc(sizeof(context));
+  if (ctx == NULL) {
+    fprintf(stderr, "malloc error for ctx!\n");
+    exit(EXIT_FAILURE);
+  }
   ctx->db = db;
   pthread_mutex_init(&ctx->mutex, NULL);
   pthread_cond_init(&ctx->condition, NULL);
 
   ctx->hosts_table = ht_create();
   ctx->sessions_table = ht_create();
+  ctx->q = init_queue();
 
   if (argc < 2) {
-    fprintf(stderr, "You have to specified hostname!\n");
+    fprintf(stderr, "You have to specify hostname!\n");
     exit(EXIT_FAILURE);
   }
 
-  res = pthread_create(&db_writer_thread, NULL, db_writer, ctx);
+  res = pthread_create(&db_writer_thread, NULL, session_db_writer, ctx);
   if (res) {
     fprintf(stderr, "error while creating thread!\n");
     exit(EXIT_FAILURE);
@@ -187,11 +245,15 @@ int main(int argc, char const *argv[]) {
 
   pthread_mutex_destroy(&ctx->mutex);
   pthread_cond_destroy(&ctx->condition);
-  free(ctx->hosts_table);
-  free(ctx->sessions_table);
+
+  ht_destroy(ctx->hosts_table);
+  ht_destroy(ctx->sessions_table);
+
   free(ctx->db);
   free(ctx->db_writer_thread);
   free(ctx);
+  free(ctx->q);
+  sqlite3_close(db);
   // free(ctx->);
 
   return 0;

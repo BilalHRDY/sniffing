@@ -10,7 +10,7 @@
 typedef struct item {
   const char *key;
   void *value;
-} item; // 16 bytes
+} item;
 
 typedef struct ht {
   size_t capacity;
@@ -18,7 +18,6 @@ typedef struct ht {
   item *items;
 } ht;
 
-// Create hash table and return pointer to it, or NULL if out of memory.
 ht *ht_create(void);
 
 // Free memory allocated for hash table, including allocated keys.

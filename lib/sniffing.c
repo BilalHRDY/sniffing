@@ -54,9 +54,9 @@ void init_hosts_table_and_filter(ht *table, char *domains[], char **filter) {
   char ipstr[INET6_ADDRSTRLEN];
   void *addr;
 
-  *filter = strdup("ip or ip6 and (src host ");
+  *filter = strdup("ip or ip6 and (dst host ");
 
-  char *separator = " or src host ";
+  char *separator = " or dst host ";
   int is_last_ip = 0;
   for (size_t i = 0; domains[i] != NULL; i++) {
 

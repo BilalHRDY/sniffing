@@ -115,6 +115,19 @@ int main() {
   pcap_close(handle);
   sqlite3_close(db);
   return 0;
+
+  // il manque le where
+  "INSERT INTO cache VALUES(key, generation)ON DUPLICATE KEY UPDATE(key = key, "
+  "generation = generation + 1);";
+
+  // si on a la clé, et il manque le where
+  // il faut redonner toutes les colonnes car l'entrée est détruite avant d'être
+  // mise à jour
+  "REPLACE INTO my_table (pk_id, col1) VALUES (5, '123');"
+
+  "INSERT INTO visits (ip, hits)
+      VALUES('127.0.0.1', 1) ON CONFLICT(ip) DO UPDATE SET hits = hits + 1;
+  "
 }
 
 // #include "hashmap.h"
