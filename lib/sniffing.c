@@ -1,6 +1,8 @@
+#include "sniffing.h"
 #include "utils/hashmap.h"
 #include <arpa/inet.h>
 #include <netdb.h>
+// #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,4 +82,62 @@ void init_hosts_table_and_filter(ht *table, char *domains[], char **filter) {
   printf("filter: %s\n", *filter);
 }
 
-void create_or_edit_session() {}
+session *create_session(time_t timestamp, char *hostname) {
+
+  session *s = malloc(sizeof(session));
+  if (s == NULL) {
+    fprintf(stderr, "malloc error for session!\n");
+    exit(EXIT_FAILURE);
+  }
+  s->hostname = hostname;
+  s->first_visit = timestamp;
+  s->last_visit = s->first_visit;
+  s->time_to_save = 0;
+  return s;
+}
+
+void get_dst_ip_string_from_packets(const u_char *packet, char *ipstr,
+                                    int version) {
+  if (version == 4) {
+    struct in_addr dst_addr;
+
+    memcpy(&dst_addr.s_addr, &packet[30], 4);
+    inet_ntop(AF_INET, &dst_addr, ipstr, INET_ADDRSTRLEN);
+
+  } else {
+    struct in6_addr dst_addr;
+    memcpy(&dst_addr, &packet[38], sizeof(dst_addr));
+    inet_ntop(AF_INET6, &dst_addr, ipstr, INET6_ADDRSTRLEN);
+  }
+}
+
+int insert_session(session *s, sqlite3 *db) {
+
+  const char *sql = "INSERT INTO sessions (HOSTNAME, TOTAL_DURATION)"
+                    "VALUES(?, ?) ON CONFLICT(HOSTNAME)"
+                    "DO UPDATE SET TOTAL_DURATION = TOTAL_DURATION + "
+                    "excluded.TOTAL_DURATION;";
+
+  sqlite3_stmt *stmt;
+  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    fprintf(stderr, "Erreur de préparation: %s\n", sqlite3_errmsg(db));
+    return -1;
+  }
+
+  if (s == NULL) {
+    printf("s is NULL\n");
+  }
+
+  sqlite3_bind_text(stmt, 1, s->hostname, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, s->time_to_save);
+  printf("---------------------------------------DB: time_to_save: %d\n",
+         s->time_to_save);
+  rc = sqlite3_step(stmt);
+  if (rc != SQLITE_DONE) {
+    fprintf(stderr, "Erreur d'exécution: %s\n", sqlite3_errmsg(db));
+    return -1;
+  }
+  sqlite3_finalize(stmt);
+  return 0;
+}
