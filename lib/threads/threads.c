@@ -14,8 +14,59 @@
 
 typedef struct {
   char *verb;
+  int host_len;
   char **hostnames;
 } command;
+
+command *build_command(char *words[], int len) {
+  command *cmd = malloc(sizeof(command));
+
+  if (strcmp(words[0], "quit") == 0) {
+    exit(EXIT_SUCCESS);
+  } else if (strcmp(words[0], "add") == 0 || strcmp(words[0], "remove") == 0) {
+    cmd->verb = strdup(words[0]);
+
+    cmd->host_len = len;
+    cmd->hostnames = words + 1;
+
+    // printf("cmd->verb: %s\n", cmd->verb);
+    // printf("cmd->hostnames[0]: %s\n", cmd->hostnames[0]);
+    // printf("cmd->hostnames[1]: %s\n", cmd->hostnames[1]);
+    return cmd;
+  } else {
+    fprintf(stderr, "Command '%s' not known!\n", words[0]);
+    exit(EXIT_FAILURE);
+  }
+}
+int extract_words_from_input(char *buf, char *words[], int *words_len) {
+  int word_count = 0;
+  size_t start_idx = 0;
+  size_t buf_len = strlen(buf);
+  for (size_t i = 0; i <= buf_len; i++) {
+    if (buf[i] == ' ' || i == buf_len) {
+      size_t word_len = i - start_idx;
+      if (word_len == 0) {
+        start_idx = i + 1;
+        continue;
+      }
+
+      words[word_count] = malloc((i - start_idx) * sizeof(char) + 1);
+      if (!words[word_count]) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+      }
+      strncpy(words[word_count], &(buf[start_idx]), word_len);
+      words[word_count][word_len] = '\0';
+      word_count++;
+      start_idx = i + 1;
+    }
+  }
+  for (size_t i = 0; i < word_count; i++) {
+    printf("cmd: %s.\n", words[i]);
+  }
+  printf("words_len: %p\n", words_len);
+  *words_len = word_count;
+};
 
 void *session_db_writer_thread(void *data) {
   printf("------------------ session_db_writer ------------------ \n");
@@ -79,11 +130,15 @@ void *socket_server_thread(void *data) {
     printf("Accepted socket fd = %d\n", cfd);
 
     while ((numRead = read(cfd, buf, BUF_SIZE)) > 0) {
+      char *words[5];
+      int *words_len = malloc(sizeof(int));
+      extract_words_from_input(buf, words, words_len);
+      printf("words[0]: %s\n", words[0]);
+      printf("words[1]: %s\n", words[1]);
+      printf("words_len: %d\n", *words_len);
       //   command *cmd = (command *)buf;
       //   printf("cmd->verb: %s\n", cmd->verb);
-      printf("buf[0]: %c\n", buf[0]);
-      printf("buf[2]: %c\n", buf[2]);
-      printf("buf[6]: %c\n", buf[6]);
+
       if (write(STDOUT_FILENO, buf, numRead) != numRead) {
         perror("Error writing from buffer");
         exit(EXIT_FAILURE);

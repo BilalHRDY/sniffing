@@ -1,3 +1,4 @@
+#include "uds_common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,85 +56,58 @@ void read_input(input_buffer *input_buf) {
   input_buf->buffer[bytes_read - 1] = 0;
 }
 
-int extract_words_from_input(input_buffer *input_buf, char *words[]) {
-  int word_count = 0;
-  size_t start_idx = 0;
-  for (size_t i = 0; i <= input_buf->input_length; i++) {
-    if (input_buf->buffer[i] == ' ' || i == input_buf->input_length) {
-      size_t word_len = i - start_idx;
-      if (word_len == 0) {
-        start_idx = i + 1;
-        continue;
-      }
+// command *build_command(char *words[], int len) {
+//   command *cmd = malloc(sizeof(command));
 
-      words[word_count] = malloc((i - start_idx) * sizeof(char) + 1);
-      if (!words[word_count]) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-      }
-      strncpy(words[word_count], &(input_buf->buffer[start_idx]), word_len);
-      words[word_count][word_len] = '\0';
-      word_count++;
-      start_idx = i + 1;
-    }
-  }
-  for (size_t i = 0; i < word_count; i++) {
-    printf("cmd: %s.\n", words[i]);
-  }
-  return word_count;
-};
+//   if (strcmp(words[0], "quit") == 0) {
+//     exit(EXIT_SUCCESS);
+//   } else if (strcmp(words[0], "add") == 0 || strcmp(words[0], "remove") == 0)
+//   {
+//     cmd->verb = strdup(words[0]);
 
-command *build_command(char *words[], int len) {
-  command *cmd = malloc(sizeof(command));
+//     cmd->host_len = len;
+//     cmd->hostnames = words + 1;
 
-  if (strcmp(words[0], "quit") == 0) {
-    exit(EXIT_SUCCESS);
-  } else if (strcmp(words[0], "add") == 0 || strcmp(words[0], "remove") == 0) {
-    cmd->verb = strdup(words[0]);
+//     // printf("cmd->verb: %s\n", cmd->verb);
+//     // printf("cmd->hostnames[0]: %s\n", cmd->hostnames[0]);
+//     // printf("cmd->hostnames[1]: %s\n", cmd->hostnames[1]);
+//     return cmd;
+//   } else {
+//     fprintf(stderr, "Command '%s' not known!\n", words[0]);
+//     exit(EXIT_FAILURE);
+//   }
+// }
 
-    cmd->host_len = len;
-    cmd->hostnames = words + 1;
+// char *serialize_command(command *cmd) {
+//   size_t total_len = strlen(cmd->verb) + 1;
+//   printf("total_len: %zu\n", total_len);
+//   //   total_len += strlen(cmd->host_len) + 1;
+//   for (size_t i = 0; i < 2; i++) {
+//     total_len += strlen(cmd->hostnames[i]) + 1;
+//   }
 
-    // printf("cmd->verb: %s\n", cmd->verb);
-    // printf("cmd->hostnames[0]: %s\n", cmd->hostnames[0]);
-    // printf("cmd->hostnames[1]: %s\n", cmd->hostnames[1]);
-    return cmd;
-  } else {
-    fprintf(stderr, "Command '%s' not known!\n", words[0]);
-    exit(EXIT_FAILURE);
-  }
-}
+//   char *p = malloc(total_len);
+//   char *buf = p;
+//   strcpy(p, cmd->verb);
+//   p += strlen(cmd->verb) + 1;
+//   //   strcat(buf, cmd->host_len);
+//   for (size_t i = 0; i < 2; i++) {
+//     // strcat(buf, " ");
+//     strcpy(p, cmd->hostnames[i]);
+//     p += strlen(cmd->hostnames[i]) + 1;
+//   }
 
-char *serialize_command(command *cmd) {
-  size_t total_len = strlen(cmd->verb) + 1;
-  printf("total_len: %zu\n", total_len);
-  //   total_len += strlen(cmd->host_len) + 1;
-  for (size_t i = 0; i < 2; i++) {
-    total_len += strlen(cmd->hostnames[i]) + 1;
-  }
+//   printf("buf: %s\n", buf);
+//   printf("strlen(buf): %lu\n", strlen(buf));
+//   return buf;
+// }
 
-  char *p = malloc(total_len);
-  char *buf = p;
-  strcpy(p, cmd->verb);
-  p += strlen(cmd->verb) + 1;
-  //   strcat(buf, cmd->host_len);
-  for (size_t i = 0; i < 2; i++) {
-    // strcat(buf, " ");
-    strcpy(p, cmd->hostnames[i]);
-    p += strlen(cmd->hostnames[i]) + 1;
-  }
-
-  printf("buf: %s\n", buf);
-  printf("strlen(buf): %lu\n", strlen(buf));
-  return buf;
-}
-
-char *handle_input(input_buffer *input_buf) {
-  char *words[5];
-  int word_count = extract_words_from_input(input_buf, words);
-  command *cmd = build_command(words, word_count);
-  return serialize_command(cmd);
-}
+// char *handle_input(input_buffer *input_buf) {
+//   char *words[5];
+//   int word_count = extract_words_from_input(input_buf, words);
+//   command *cmd = build_command(words, word_count);
+//   return serialize_command(cmd);
+// }
 
 int main(int argc, char *argv[]) {
   struct sockaddr_un addr;
@@ -159,31 +133,17 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  //
-  // Copy stdin to socket.
-  //
-
-  // Read at most BUF_SIZE bytes from STDIN into buf.
+  uds_request_t req;
   while (1) {
     printf("sniffing >");
     read_input(input_buf);
-    char *serialized_cmd = handle_input(input_buf);
-    // Then, write those bytes from buf into the socket.
 
-    if (write(sfd, serialized_cmd, strlen(serialized_cmd)) !=
-        strlen(serialized_cmd)) {
-      perror("Error writing to socket");
-      close(sfd);
-      exit(EXIT_FAILURE);
-    }
+    req = init_client_request(input_buf->buffer);
+    free(input_buf);
+    send_request(sfd, &req);
+
+    // écouter la réponse
   }
 
-  if (numRead == -1) {
-    perror("Error reading from stdin");
-    close(sfd);
-    exit(EXIT_FAILURE);
-  }
-
-  // Closes our socket; server sees EOF.
   exit(EXIT_SUCCESS);
 }
