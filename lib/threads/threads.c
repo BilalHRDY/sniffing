@@ -1,3 +1,4 @@
+#include "../../uds_common.h"
 #include "../sniffing.h"
 #include <errno.h>
 #include <pthread.h>
@@ -130,19 +131,22 @@ void *socket_server_thread(void *data) {
     printf("Accepted socket fd = %d\n", cfd);
 
     while ((numRead = read(cfd, buf, BUF_SIZE)) > 0) {
-      char *words[5];
-      int *words_len = malloc(sizeof(int));
-      extract_words_from_input(buf, words, words_len);
-      printf("words[0]: %s\n", words[0]);
-      printf("words[1]: %s\n", words[1]);
-      printf("words_len: %d\n", *words_len);
+      uds_request_t *req = (uds_request_t *)buf;
+
+      printf("data: %s\n", req->data);
+      //   char *words[5];
+      //   int *words_len = malloc(sizeof(int));
+      //   extract_words_from_input(buf, words, words_len);
+      //   printf("words[0]: %s\n", words[0]);
+      //   printf("words[1]: %s\n", words[1]);
+      //   printf("words_len: %d\n", *words_len);
       //   command *cmd = (command *)buf;
       //   printf("cmd->verb: %s\n", cmd->verb);
 
-      if (write(STDOUT_FILENO, buf, numRead) != numRead) {
-        perror("Error writing from buffer");
-        exit(EXIT_FAILURE);
-      }
+      //   if (write(STDOUT_FILENO, buf, numRead) != numRead) {
+      //     perror("Error writing from buffer");
+      //     exit(EXIT_FAILURE);
+      //   }
     }
 
     if (numRead == -1) {
