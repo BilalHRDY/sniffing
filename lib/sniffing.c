@@ -82,6 +82,8 @@ void init_hosts_table_and_filter(ht *table, char *domains[], char **filter) {
   printf("filter: %s\n", *filter);
 }
 
+void add_domains_to_hosts_table(ht *table, char *domains[]) {};
+
 session *create_session(time_t timestamp, char *hostname) {
 
   session *s = malloc(sizeof(session));

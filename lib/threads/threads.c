@@ -46,7 +46,7 @@ command *build_command(command *cmd, char *words[], int len) {
   if (strcmp(words[0], "hostname") == 0) {
     if (strcmp(words[1], "add")) {
       words += 2;
-      init_hosts_table_and_filter()
+      // init_hosts_table_and_filter();
     } else {
       fprintf(stderr, "Command not known!\n");
       return NULL;
@@ -68,7 +68,7 @@ command *build_command(command *cmd, char *words[], int len) {
 
     printf("cmd->args: %s\n", cmd->args[i]);
   }
-
+  return cmd;
   // strncpy(cmd->verb, words[0], strlen(words[0]));
 }
 
