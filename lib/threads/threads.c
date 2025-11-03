@@ -12,62 +12,14 @@
 #define SV_SOCK_PATH "tmp/sniffing_socket"
 #define BACKLOG 3
 #define BUF_SIZE 1024
+#define MAX_WORDS 2
 
 typedef struct {
   char *verb;
-  int host_len;
-  char **hostnames;
+  char *sub_verb;
+  int args_len;
+  char **args;
 } command;
-
-command *build_command(char *words[], int len) {
-  command *cmd = malloc(sizeof(command));
-
-  if (strcmp(words[0], "quit") == 0) {
-    exit(EXIT_SUCCESS);
-  } else if (strcmp(words[0], "add") == 0 || strcmp(words[0], "remove") == 0) {
-    cmd->verb = strdup(words[0]);
-
-    cmd->host_len = len;
-    cmd->hostnames = words + 1;
-
-    // printf("cmd->verb: %s\n", cmd->verb);
-    // printf("cmd->hostnames[0]: %s\n", cmd->hostnames[0]);
-    // printf("cmd->hostnames[1]: %s\n", cmd->hostnames[1]);
-    return cmd;
-  } else {
-    fprintf(stderr, "Command '%s' not known!\n", words[0]);
-    exit(EXIT_FAILURE);
-  }
-}
-int extract_words_from_input(char *buf, char *words[], int *words_len) {
-  int word_count = 0;
-  size_t start_idx = 0;
-  size_t buf_len = strlen(buf);
-  for (size_t i = 0; i <= buf_len; i++) {
-    if (buf[i] == ' ' || i == buf_len) {
-      size_t word_len = i - start_idx;
-      if (word_len == 0) {
-        start_idx = i + 1;
-        continue;
-      }
-
-      words[word_count] = malloc((i - start_idx) * sizeof(char) + 1);
-      if (!words[word_count]) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-      }
-      strncpy(words[word_count], &(buf[start_idx]), word_len);
-      words[word_count][word_len] = '\0';
-      word_count++;
-      start_idx = i + 1;
-    }
-  }
-  for (size_t i = 0; i < word_count; i++) {
-    printf("cmd: %s.\n", words[i]);
-  }
-  printf("words_len: %p\n", words_len);
-  *words_len = word_count;
-};
 
 void *session_db_writer_thread(void *data) {
   printf("------------------ session_db_writer ------------------ \n");
@@ -85,6 +37,79 @@ void *session_db_writer_thread(void *data) {
 
   return NULL;
 }
+
+command *build_command(command *cmd, char *words[], int len) {
+  printf("strlen(words[0]): %zu\n", strlen(words[0]));
+  size_t args_idx = 1;
+  cmd->verb = strdup(words[0]);
+
+  if (strcmp(words[0], "hostname") == 0) {
+    if (strcmp(words[1], "add")) {
+      words += 2;
+      init_hosts_table_and_filter()
+    } else {
+      fprintf(stderr, "Command not known!\n");
+      return NULL;
+    }
+  } else if (strcmp(words[0], "stop") == 0) {
+    if (strcmp(words[1], "server")) {
+      cmd->sub_verb = strdup(words[1]);
+      args_idx++;
+    } else {
+      fprintf(stderr, "Command not known!\n");
+      return NULL;
+    }
+  } else if (strcmp(words[0], "promiscuous") == 0) {
+  }
+
+  printf("cmd->verb: %s\n", cmd->verb);
+  for (size_t i = 0; i < len; i++) {
+    cmd->args[i] = strdup(words[i + args_idx]);
+
+    printf("cmd->args: %s\n", cmd->args[i]);
+  }
+
+  // strncpy(cmd->verb, words[0], strlen(words[0]));
+}
+
+int extract_words_from_input(char *str, char *words[MAX_WORDS],
+                             int *words_len) {
+
+  const char *separators = " ";
+  int word_count = 0;
+
+  char *str_token = strtok(str, separators);
+  if (str_token == NULL) {
+    fprintf(stderr, "str is empty!\n");
+    return -1;
+  }
+  do {
+    if (word_count == MAX_WORDS) {
+      fprintf(stderr, "Too many arguments!\n");
+      return -1;
+    }
+    words[word_count++] = strdup(str_token);
+  } while ((str_token = strtok(NULL, separators)) != NULL);
+
+  *words_len = word_count;
+  for (size_t i = 0; i < word_count; i++) {
+    printf("words: %s\n", words[i]);
+  }
+
+  return 1;
+};
+
+void handle_request(char *data) {
+  // TODO créer une constante MAX_WORDS
+  char *words[MAX_WORDS];
+  int words_len;
+  if (!extract_words_from_input(data, words, &words_len)) {
+    // retourner l'erreur au client
+    return;
+  };
+  command cmd;
+  build_command(&cmd, words, words_len);
+};
 
 void *socket_server_thread(void *data) {
 
@@ -122,7 +147,7 @@ void *socket_server_thread(void *data) {
     exit(EXIT_FAILURE);
   }
 
-  ssize_t numRead;
+  ssize_t req_len;
   char buf[BUF_SIZE];
   while (true) { /* Handle client connections iteratively */
 
@@ -130,10 +155,17 @@ void *socket_server_thread(void *data) {
     int cfd = accept(sfd, NULL, NULL);
     printf("Accepted socket fd = %d\n", cfd);
 
-    while ((numRead = read(cfd, buf, BUF_SIZE)) > 0) {
+    while ((req_len = read(cfd, buf, BUF_SIZE)) > 0) {
       uds_request_t *req = (uds_request_t *)buf;
 
-      printf("data: %s\n", req->data);
+      if (req_len != sizeof(header_t) + req->header.data_len) {
+        fprintf(stderr, "Invalid length of packet\n");
+        continue;
+      }
+      handle_request(req->data);
+      //   printf("req_len: %zu\n", req_len);
+      //   printf("data_len: %zu\n", strlen(req->data));
+      //   printf("data: %s\n", req->data);
       //   char *words[5];
       //   int *words_len = malloc(sizeof(int));
       //   extract_words_from_input(buf, words, words_len);
@@ -143,19 +175,17 @@ void *socket_server_thread(void *data) {
       //   command *cmd = (command *)buf;
       //   printf("cmd->verb: %s\n", cmd->verb);
 
-      //   if (write(STDOUT_FILENO, buf, numRead) != numRead) {
+      //   if (write(STDOUT_FILENO, buf, req_len) != req_len) {
       //     perror("Error writing from buffer");
       //     exit(EXIT_FAILURE);
       //   }
     }
 
-    if (numRead == -1) {
+    if (req_len == -1) {
       perror("Error reading from socket");
       exit(EXIT_FAILURE);
     }
 
-    if (close(cfd) == -1) {
-      perror("Error closing client socket");
-    }
+    close(cfd);
   }
 }

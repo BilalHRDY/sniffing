@@ -34,7 +34,6 @@ int has_null_terminator(const char *s) {
 }
 
 input_buffer_t new_input_buffer() {
-  //   input_buffer_t *input_buf = malloc(sizeof(input_buffer_t));
   input_buffer_t input_buf;
   input_buf.buffer = NULL;
   input_buf.buffer_length = 0;
@@ -51,7 +50,7 @@ void read_input(input_buffer_t *input_buf) {
     printf("Error reading input\n");
     exit(EXIT_FAILURE);
   }
-
+  printf("bytes_read: %zu\n", bytes_read);
   // Ignore trailing newline
   input_buf->input_length = bytes_read - 1;
   input_buf->buffer[bytes_read - 1] = 0;
@@ -81,14 +80,22 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  uds_request_t req;
   while (1) {
-    printf("sniffing >");
+    printf("sniffing> ");
     read_input(&input_buf);
-    printf("input_buf.buffer: %s\n", input_buf.buffer);
-    req = init_client_request(input_buf.buffer);
-    // free(input_buf);
-    send_request(sfd, &req);
+    if (input_buf.input_length == 0) {
+      continue;
+    }
+
+    uds_request_t req;
+
+    if (!init_client_request(input_buf.buffer, &req)) {
+      continue;
+    }
+
+    if (!send_request(sfd, &req)) {
+      continue;
+    }
 
     // écouter la réponse
   }

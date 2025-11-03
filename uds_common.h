@@ -6,7 +6,7 @@
 #define STATUS_SUCCESS 0
 #define STATUS_ERROR 1
 
-#define UDS_DATA_SIZE 3
+#define UDS_DATA_SIZE 256
 
 typedef struct header {
   unsigned int data_len;
@@ -18,8 +18,8 @@ typedef struct uds_request {
   char data[UDS_DATA_SIZE]; /* Data from client to server */
 } BYTE_ALIGNED uds_request_t;
 
-uds_request_t init_client_request(char *data);
+int init_client_request(char *data, uds_request_t *req);
 
-void send_request(int sfd, uds_request_t *req);
+int send_request(int sfd, uds_request_t *req);
 
 #endif
