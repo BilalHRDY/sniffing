@@ -1,4 +1,5 @@
 main
+client
 *.dSYM
 *.o
 .DS_STORE

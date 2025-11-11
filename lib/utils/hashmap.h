@@ -40,7 +40,7 @@ size_t ht_length(ht *table);
 typedef struct {
   const char *key; // current key
   void *value;     // current value
-
+  size_t visited;
   // Don't use these fields directly.
   ht *_table;    // reference to hash table being iterated
   size_t _index; // current index into ht._entries

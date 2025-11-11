@@ -21,18 +21,6 @@ typedef struct {
   char **hostnames;
 } command;
 
-int has_null_terminator(const char *s) {
-  int i = 0;
-  while (1) {
-    if (s[i] == '\0') {
-      printf("has_null_terminator!\n");
-      return 1;
-    }
-    printf("s[i]: %c\n", s[i]);
-    i++;
-  }
-}
-
 input_buffer_t new_input_buffer() {
   input_buffer_t input_buf;
   input_buf.buffer = NULL;

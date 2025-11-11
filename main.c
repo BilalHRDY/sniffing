@@ -16,12 +16,9 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
   char ipstr[INET6_ADDRSTRLEN];
   int version = packet[14] >> 4;
   context *ctx = (context *)user;
-  ctx->count += 1;
-  // print_hash_table(ctx->hosts_table);
+
   get_dst_ip_string_from_packets(packet, ipstr, version);
-  char *hostname = ht_get(ctx->hosts_table, ipstr);
-  // printf("\ncount %d, timestamp: %ld, host: %s\n", ctx->count,
-  //        header->ts.tv_sec, hostname);
+  char *hostname = ht_get(ctx->domain_cache->ip_to_domain, ipstr);
 
   session *s = ht_get(ctx->sessions_table, hostname);
   if (s == NULL) {
@@ -65,7 +62,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
   //                   (packet[31] << 8) | (packet[30]);
 };
 
-int main(int argc, char const *argv[]) {
+int main() {
   sqlite3 *db;
   char *database_name = "sniffing.db";
   char *errmsg;
@@ -98,7 +95,6 @@ int main(int argc, char const *argv[]) {
   int status;
   char ipstr[INET6_ADDRSTRLEN], ipver;
 
-  char *filter;
   pthread_t db_writer_thread;
   pthread_t server_thread;
 
@@ -111,14 +107,20 @@ int main(int argc, char const *argv[]) {
   pthread_mutex_init(&ctx->mutex, NULL);
   pthread_cond_init(&ctx->condition, NULL);
 
-  ctx->hosts_table = ht_create();
+  domain_cache_t cache;
+  ht *ip_to_domain = ht_create();
+  cache.ip_to_domain = ip_to_domain;
+  char **hostnames;
+  cache.hostnames = hostnames;
+
+  ctx->domain_cache = &cache;
+
   ctx->sessions_table = ht_create();
   ctx->q = init_queue();
 
-  if (argc < 2) {
-    fprintf(stderr, "You have to specify hostname!\n");
-    exit(EXIT_FAILURE);
-  }
+  init_ip_to_domain_from_db(ctx->domain_cache->ip_to_domain, db);
+  char *filter =
+      build_filter_from_ip_to_domain(ctx->domain_cache->ip_to_domain);
 
   db_writer_thread_res =
       pthread_create(&db_writer_thread, NULL, session_db_writer_thread, ctx);
@@ -130,18 +132,21 @@ int main(int argc, char const *argv[]) {
   }
 
   // TODO: ne pas caster
-  init_hosts_table_and_filter(ctx->hosts_table, (char **)argv + 1, &filter);
+
+  // init_ip_to_domain_and_filter(&cache, (char **)argv + 1, &filter);
 
   struct bpf_program fp;
-
+  ctx->bpf = &fp;
   ht *sessions_table = ht_create();
 
   pcap_t *handle;
   bpf_u_int32 net, mask;
+  ctx->mask = &mask;
 
   pcap_lookupnet("en0", &net, &mask, error_buffer);
 
   handle = pcap_open_live(device, BUFSIZ, 0, 1000, error_buffer);
+  ctx->handle = handle;
 
   if (handle == NULL) {
     fprintf(stderr, "Erreur: %s\n", error_buffer);
@@ -157,16 +162,17 @@ int main(int argc, char const *argv[]) {
     exit(EXIT_FAILURE);
   }
   if (pcap_loop(handle, packets_count, packet_handler, (u_char *)ctx)) {
-    fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(handle));
+    fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(handle));
     exit(EXIT_FAILURE);
   }
 
   pthread_join(db_writer_thread, NULL);
+  pthread_join(server_thread, NULL);
 
   pthread_mutex_destroy(&ctx->mutex);
   pthread_cond_destroy(&ctx->condition);
 
-  ht_destroy(ctx->hosts_table);
+  ht_destroy(ctx->domain_cache->ip_to_domain);
   ht_destroy(ctx->sessions_table);
 
   free(ctx->db);
@@ -174,7 +180,6 @@ int main(int argc, char const *argv[]) {
   free(ctx);
   free(ctx->q);
   sqlite3_close(db);
-  // free(ctx->);
 
   return 0;
 }

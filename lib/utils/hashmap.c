@@ -169,17 +169,17 @@ hti ht_iterator(ht *table) {
   hti it;
   it._table = table;
   it._index = 0;
+  it.visited = 0;
   return it;
 }
 
 bool ht_next(hti *it) {
-  // Loop till we've hit end of items array.
   ht *table = it->_table;
   while (it->_index < table->capacity) {
     size_t i = it->_index;
     it->_index++;
     if (table->items[i].key != NULL) {
-      // Found next non-empty item, update iterator key and value.
+      it->visited++;
       item entry = table->items[i];
       it->key = entry.key;
       it->value = entry.value;
@@ -188,3 +188,5 @@ bool ht_next(hti *it) {
   }
   return false;
 }
+
+size_t ht_length(ht *table) { return table->count; };
