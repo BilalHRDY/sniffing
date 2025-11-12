@@ -66,7 +66,7 @@ static void build_ip_domain_table(ht *ip_to_domain, int domains_len,
 void get_hostnames_from_db(sqlite3 *db, int *len, char ***hostnames) {
   *len = 0;
   sqlite3_stmt *stmt;
-  char *sql = "SELECT * FROM sessions";
+  char *sql = "SELECT HOSTNAME FROM sessions";
   int rc;
   char *errmsg;
   rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -80,7 +80,7 @@ void get_hostnames_from_db(sqlite3 *db, int *len, char ***hostnames) {
     if (!hostnames) {
       perror("realloc");
     }
-    (*hostnames)[(*len)++] = strdup((const char *)sqlite3_column_text(stmt, 1));
+    (*hostnames)[(*len)++] = strdup((const char *)sqlite3_column_text(stmt, 0));
   }
 }
 
@@ -157,7 +157,28 @@ int is_string_in_array(char *target, char **to_compare, int len) {
   return 0;
 }
 
-void add_in_db(sqlite3 *db, char *domain) {};
+int insert_default_session_in_db(sqlite3 *db, char *domain) {
+  const char *sql = "INSERT INTO sessions (HOSTNAME, TOTAL_DURATION)"
+                    "VALUES(?, ?);";
+
+  sqlite3_stmt *stmt;
+  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    fprintf(stderr, "Erreur de préparation: %s\n", sqlite3_errmsg(db));
+    return -1;
+  }
+
+  sqlite3_bind_text(stmt, 1, domain, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, 0);
+  printf("---------------------------------------DB: add default session: %s\n",
+         domain);
+  rc = sqlite3_step(stmt);
+  if (rc != SQLITE_DONE) {
+    fprintf(stderr, "Erreur d'exécution: %s\n", sqlite3_errmsg(db));
+    return -1;
+  }
+  return sqlite3_finalize(stmt);
+};
 
 void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
                             sqlite3 *db) {
@@ -186,6 +207,8 @@ void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
 
       p = p->ai_next;
     }
+
+    insert_default_session_in_db(db, domains[i]);
     freeaddrinfo(res);
   }
   for (int i = 0; i < len; i++) {
@@ -203,7 +226,6 @@ char *build_filter_from_ip_to_domain(ht *ip_to_domain) {
   bool is_last_ip = false;
   while (ht_next(&it)) {
     is_last_ip = (it.visited == ht_length(ip_to_domain));
-    printf("it.key: %s\n", it.key);
     add_ip_in_filter(it.key, &filter, separator, is_last_ip);
   }
 
@@ -277,6 +299,5 @@ int insert_session(session *s, sqlite3 *db) {
     fprintf(stderr, "Erreur d'exécution: %s\n", sqlite3_errmsg(db));
     return -1;
   }
-  sqlite3_finalize(stmt);
-  return 0;
+  return sqlite3_finalize(stmt);
 }

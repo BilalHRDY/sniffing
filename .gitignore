@@ -5,3 +5,4 @@ client
 .DS_STORE
 .vscode
 *.db
+/lldb
