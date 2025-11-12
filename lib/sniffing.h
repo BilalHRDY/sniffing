@@ -6,7 +6,7 @@
 #include <pcap/pcap.h>
 #include <sqlite3.h>
 
-typedef struct session {
+typedef struct ssession {
   // int id;
   char *hostname;
   time_t first_visit;
@@ -18,6 +18,7 @@ typedef struct domain_cache {
   ht *ip_to_domain;
   char **hostnames;
 } domain_cache_t;
+
 typedef struct context {
   struct bpf_program *bpf;
   pcap_t *handle;
@@ -41,4 +42,9 @@ void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
                             sqlite3 *db);
 session *create_session(time_t timestamp, char *hostname);
 int insert_session(session *s, sqlite3 *db);
+
+void packet_handler(u_char *user, const struct pcap_pkthdr *header,
+                    const u_char *packet);
+
+void get_hostnames_from_db(sqlite3 *db, int *len, char ***hostnames);
 #endif

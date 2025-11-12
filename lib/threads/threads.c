@@ -51,8 +51,26 @@ void add_hosts_to_listen(char *domains[], int len, context *ctx) {
     fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(ctx->handle));
     exit(EXIT_FAILURE);
   }
+  printf("ok\n");
 };
 
+void start_pcap(context *ctx) {
+
+  char **hostnames = NULL;
+  int len;
+  get_hostnames_from_db(ctx->db, &len, &hostnames);
+
+  if (!len) {
+    fprintf(stderr, "no hostname!\n");
+    return;
+  }
+
+  // TODO créer une constante pour -1
+  if (pcap_loop(ctx->handle, -1, packet_handler, (u_char *)ctx)) {
+    fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(ctx->handle));
+    exit(EXIT_FAILURE);
+  }
+}
 // void get_hosts_to_listen(ht ip_to_domain) { char *hosts[5]; };
 
 void handle_command(char *words[], int len, context *ctx) {
@@ -61,6 +79,7 @@ void handle_command(char *words[], int len, context *ctx) {
   if (strcmp(verb, "hostname") == 0) {
     char **args = words + 2;
     int args_len = len - 2;
+    // TODO checker si il y a bien un 2ème mot
     if (strcmp(words[1], "add") == 0) {
 
       add_hosts_to_listen(args, args_len, ctx);
@@ -68,9 +87,12 @@ void handle_command(char *words[], int len, context *ctx) {
       // get_hosts_to_listen(ctx->domain_cache->ip_to_domain);
     }
 
-    else {
-      fprintf(stderr, "Command not known!\n");
+  } else if (strcmp(verb, "server") == 0) {
+    if (strcmp(words[1], "start") == 0) {
+      start_pcap(ctx);
     }
+  } else {
+    fprintf(stderr, "Command not known!\n");
   }
 }
 
@@ -165,7 +187,6 @@ void *socket_server_thread(void *data) {
       }
       handle_request(req->data, ctx);
       ssize_t r = write(cfd, "ok!\0", 4);
-      printf("r: %zu\n", r);
     }
 
     if (req_len == -1) {

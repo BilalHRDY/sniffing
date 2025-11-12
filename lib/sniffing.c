@@ -2,12 +2,62 @@
 #include "utils/hashmap.h"
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <pthread.h>
 #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+
+void packet_handler(u_char *user, const struct pcap_pkthdr *header,
+                    const u_char *packet) {
+
+  char ipstr[INET6_ADDRSTRLEN];
+  int version = packet[14] >> 4;
+  context *ctx = (context *)user;
+
+  get_dst_ip_string_from_packets(packet, ipstr, version);
+  char *hostname = ht_get(ctx->domain_cache->ip_to_domain, ipstr);
+
+  session *s = ht_get(ctx->sessions_table, hostname);
+  if (s == NULL) {
+    printf("  CREATE SESSION --------------------, %s\n", hostname);
+    s = create_session(header->ts.tv_sec, hostname);
+    ht_set(ctx->sessions_table, hostname, s);
+    enqueue(ctx->q, s);
+    pthread_cond_signal(&ctx->condition);
+
+    return;
+  }
+
+  else if (header->ts.tv_sec == s->last_visit) {
+    // printf("  même timestamp que le paquet précédent\n");
+    return;
+  }
+
+  else if (header->ts.tv_sec - s->last_visit >= 10) {
+    printf("  RE-INIT --------------------  \n");
+    printf("  {ts.tv_sec: %ld,last_visit: %ld\n", header->ts.tv_sec,
+           s->last_visit);
+    s->first_visit = header->ts.tv_sec;
+    s->last_visit = s->first_visit;
+    return;
+  } else {
+    printf("  EDIT --------------------\n");
+    printf("  {ts.tv_sec: %ld,last_visit: %ld\n", header->ts.tv_sec,
+           s->last_visit);
+    s->time_to_save += header->ts.tv_sec - s->last_visit;
+    s->last_visit = header->ts.tv_sec;
+    session *session_copy = malloc(sizeof(session));
+    memcpy(session_copy, s, sizeof(session));
+    enqueue(ctx->q, session_copy);
+    pthread_cond_signal(&ctx->condition);
+    s->time_to_save = 0;
+
+    return;
+  }
+};
 
 static struct addrinfo *fetch_host_ip(const char *domain) {
   struct addrinfo hints, *res;

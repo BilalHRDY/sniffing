@@ -10,57 +10,28 @@
 #include <time.h>
 #include <unistd.h>
 
-void packet_handler(u_char *user, const struct pcap_pkthdr *header,
-                    const u_char *packet) {
+void init_db(sqlite3 **db) {
 
-  char ipstr[INET6_ADDRSTRLEN];
-  int version = packet[14] >> 4;
-  context *ctx = (context *)user;
+  char *database_name = "sniffing.db";
+  char *errmsg;
 
-  get_dst_ip_string_from_packets(packet, ipstr, version);
-  char *hostname = ht_get(ctx->domain_cache->ip_to_domain, ipstr);
-
-  session *s = ht_get(ctx->sessions_table, hostname);
-  if (s == NULL) {
-    printf("  CREATE SESSION --------------------, %s\n", hostname);
-    s = create_session(header->ts.tv_sec, hostname);
-    ht_set(ctx->sessions_table, hostname, s);
-    enqueue(ctx->q, s);
-    pthread_cond_signal(&ctx->condition);
-
-    return;
+  int rc = sqlite3_open(database_name, db);
+  if (rc) {
+    printf("Error while sqlite3_open: %s\n", sqlite3_errmsg(*db));
   }
 
-  else if (header->ts.tv_sec == s->last_visit) {
-    // printf("  même timestamp que le paquet précédent\n");
-    return;
+  const char *sql = "CREATE TABLE IF NOT EXISTS sessions("
+                    "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "HOSTNAME          TEXT     NOT NULL UNIQUE,"
+                    "TOTAL_DURATION           INTEGER     NOT NULL);";
+
+  rc = sqlite3_exec(*db, sql, NULL, NULL, &errmsg);
+  if (rc != SQLITE_OK) {
+    printf("SQL error: %s\n", errmsg);
+    sqlite3_free(errmsg);
+    exit(EXIT_FAILURE);
   }
-
-  else if (header->ts.tv_sec - s->last_visit >= 5) {
-    printf("  RE-INIT --------------------  \n");
-    printf("  {ts.tv_sec: %ld,last_visit: %ld\n", header->ts.tv_sec,
-           s->last_visit);
-    s->first_visit = header->ts.tv_sec;
-    s->last_visit = s->first_visit;
-    return;
-  } else {
-    printf("  EDIT --------------------\n");
-    printf("  {ts.tv_sec: %ld,last_visit: %ld\n", header->ts.tv_sec,
-           s->last_visit);
-    s->time_to_save += header->ts.tv_sec - s->last_visit;
-    s->last_visit = header->ts.tv_sec;
-    session *session_copy = malloc(sizeof(session));
-    memcpy(session_copy, s, sizeof(session));
-    enqueue(ctx->q, session_copy);
-    pthread_cond_signal(&ctx->condition);
-    s->time_to_save = 0;
-
-    return;
-  }
-
-  // uint32_t ip_dst = (packet[33] << 24) | (packet[32] << 16) |
-  //                   (packet[31] << 8) | (packet[30]);
-};
+}
 
 int main() {
   sqlite3 *db;
@@ -70,31 +41,6 @@ int main() {
   const char *sql;
   int db_writer_thread_res;
   int server_thread_res;
-  rc = sqlite3_open(database_name, &db);
-  if (rc) {
-    printf("Error while sqlite3_open: %s\n", sqlite3_errmsg(db));
-    return rc;
-  }
-
-  sql = "CREATE TABLE IF NOT EXISTS sessions("
-        "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "HOSTNAME          TEXT     NOT NULL UNIQUE,"
-        "TOTAL_DURATION           INTEGER     NOT NULL);";
-
-  rc = sqlite3_exec(db, sql, NULL, NULL, &errmsg);
-  if (rc != SQLITE_OK) {
-    printf("SQL error: %s\n", errmsg);
-    sqlite3_free(errmsg);
-    exit(EXIT_FAILURE);
-  }
-
-  char *device = "en0";
-  char error_buffer[PCAP_ERRBUF_SIZE];
-  int packets_count = 1000;
-
-  int status;
-  char ipstr[INET6_ADDRSTRLEN], ipver;
-
   pthread_t db_writer_thread;
   pthread_t server_thread;
 
@@ -103,9 +49,20 @@ int main() {
     fprintf(stderr, "malloc error for ctx!\n");
     exit(EXIT_FAILURE);
   }
+
+  init_db(&db);
   ctx->db = db;
+
   pthread_mutex_init(&ctx->mutex, NULL);
   pthread_cond_init(&ctx->condition, NULL);
+
+  db_writer_thread_res =
+      pthread_create(&db_writer_thread, NULL, session_db_writer_thread, ctx);
+
+  if (db_writer_thread_res) {
+    fprintf(stderr, "error while creating threads!\n");
+    exit(EXIT_FAILURE);
+  }
 
   domain_cache_t cache;
   ht *ip_to_domain = ht_create();
@@ -118,53 +75,56 @@ int main() {
   ctx->sessions_table = ht_create();
   ctx->q = init_queue();
 
-  init_ip_to_domain_from_db(ctx->domain_cache->ip_to_domain, db);
-  char *filter =
-      build_filter_from_ip_to_domain(ctx->domain_cache->ip_to_domain);
-
-  db_writer_thread_res =
-      pthread_create(&db_writer_thread, NULL, session_db_writer_thread, ctx);
-  server_thread_res =
-      pthread_create(&db_writer_thread, NULL, socket_server_thread, ctx);
-  if (db_writer_thread_res || server_thread_res) {
-    fprintf(stderr, "error while creating threads!\n");
-    exit(EXIT_FAILURE);
-  }
-
-  // TODO: ne pas caster
-
-  // init_ip_to_domain_and_filter(&cache, (char **)argv + 1, &filter);
-
   struct bpf_program fp;
   ctx->bpf = &fp;
-  ht *sessions_table = ht_create();
 
+  init_ip_to_domain_from_db(ip_to_domain, db);
+
+  char error_buffer[PCAP_ERRBUF_SIZE];
+  const char *device = "en0";
   pcap_t *handle;
-  bpf_u_int32 net, mask;
-  ctx->mask = &mask;
-
-  pcap_lookupnet("en0", &net, &mask, error_buffer);
-
   handle = pcap_open_live(device, BUFSIZ, 0, 1000, error_buffer);
-  ctx->handle = handle;
-
   if (handle == NULL) {
     fprintf(stderr, "Erreur: %s\n", error_buffer);
     exit(EXIT_FAILURE);
   }
+  ctx->handle = handle;
+  bpf_u_int32 net, mask;
+  pcap_lookupnet(device, &net, &mask, error_buffer);
 
-  if (pcap_compile(handle, &fp, filter, 1, mask)) {
-    fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(handle));
+  ctx->mask = &mask;
+
+  if (ip_to_domain->count > 0) {
+
+    printf("ip_to_domain->count: %zu\n", ip_to_domain->count);
+
+    char *filter = build_filter_from_ip_to_domain(ip_to_domain);
+
+    if (pcap_compile(handle, &fp, filter, 1, mask)) {
+      fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(handle));
+      exit(EXIT_FAILURE);
+    }
+    if (pcap_setfilter(handle, &fp) == -1) {
+      fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(handle));
+      exit(EXIT_FAILURE);
+    }
+    if (pcap_loop(handle, -1, packet_handler, (u_char *)ctx)) {
+      fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(handle));
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  server_thread_res =
+      pthread_create(&server_thread, NULL, socket_server_thread, ctx);
+  printf("ip_to_domain->count: %zu\n", ip_to_domain->count);
+
+  if (server_thread_res) {
+    fprintf(stderr, "error while creating threads!\n");
     exit(EXIT_FAILURE);
   }
-  if (pcap_setfilter(handle, &fp) == -1) {
-    fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(handle));
-    exit(EXIT_FAILURE);
-  }
-  if (pcap_loop(handle, packets_count, packet_handler, (u_char *)ctx)) {
-    fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(handle));
-    exit(EXIT_FAILURE);
-  }
+  // TODO: ne pas caster
+
+  // init_ip_to_domain_and_filter(&cache, (char **)argv + 1, &filter);
 
   pthread_join(db_writer_thread, NULL);
   pthread_join(server_thread, NULL);
@@ -179,7 +139,7 @@ int main() {
   free(ctx->db_writer_thread);
   free(ctx);
   free(ctx->q);
+  free(ctx->mask);
   sqlite3_close(db);
-
   return 0;
 }
