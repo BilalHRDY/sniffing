@@ -24,8 +24,12 @@ typedef struct context {
   pcap_t *handle;
   bpf_u_int32 *mask;
   sqlite3 *db;
+  int paused;
+  int has_hostnames_to_listen;
   pthread_mutex_t mutex;
+  pthread_mutex_t mutex2;
   pthread_cond_t condition;
+  pthread_cond_t condition2;
   pthread_t *db_writer_thread;
   domain_cache_t *domain_cache;
   ht *sessions_table;

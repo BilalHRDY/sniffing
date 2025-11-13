@@ -37,6 +37,61 @@ void *session_db_writer_thread(void *data) {
   return NULL;
 }
 
+void *pcap_runner_thread(void *data) {
+  printf("pcap_loop\n");
+  context *ctx = (context *)data;
+
+  struct bpf_program fp;
+  ctx->bpf = &fp;
+  char error_buffer[PCAP_ERRBUF_SIZE];
+  const char *device = "en0";
+  pcap_t *handle;
+  handle = pcap_open_live(device, BUFSIZ, 0, 1000, error_buffer);
+  if (handle == NULL) {
+    fprintf(stderr, "Erreur: %s\n", error_buffer);
+    exit(EXIT_FAILURE);
+  }
+  ctx->handle = handle;
+
+  bpf_u_int32 net, mask;
+  pcap_lookupnet(device, &net, &mask, error_buffer);
+
+  ctx->mask = &mask;
+
+  if (!ctx->paused) {
+    char *filter =
+        build_filter_from_ip_to_domain(ctx->domain_cache->ip_to_domain);
+
+    if (pcap_compile(handle, &fp, filter, 1, mask)) {
+      fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(handle));
+      exit(EXIT_FAILURE);
+    }
+    if (pcap_setfilter(handle, &fp) == -1) {
+      fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(handle));
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  printf("ip_to_domain->count: %zu\n", ctx->domain_cache->ip_to_domain->count);
+
+  char *filter = NULL;
+  while (1) {
+    printf("wait...\n");
+    printf("ctx->paused: %d\n", ctx->paused);
+    if (ctx->paused) {
+      pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
+    }
+    while (!ctx->paused) {
+      printf("is starting...\n");
+      pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
+      printf("end of loop\n");
+    }
+  }
+
+  printf("end of thread\n");
+  return NULL;
+}
+
 void add_hosts_to_listen(char *domains[], int len, context *ctx) {
   ht *ip_to_domain = ctx->domain_cache->ip_to_domain;
 
@@ -64,17 +119,25 @@ void start_pcap(context *ctx) {
     fprintf(stderr, "no hostname!\n");
     return;
   }
+  ctx->paused = 0;
+  pthread_cond_signal(&ctx->condition2);
 
-  // TODO créer une constante pour -1
-  if (pcap_loop(ctx->handle, -1, packet_handler, (u_char *)ctx)) {
-    fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(ctx->handle));
-    exit(EXIT_FAILURE);
-  }
+  // // TODO créer une constante pour -1
+  // if (pcap_loop(ctx->handle, -1, packet_handler, (u_char *)ctx)) {
+  //   fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(ctx->handle));
+  //   exit(EXIT_FAILURE);
+  // }
 }
-// void get_hosts_to_listen(ht ip_to_domain) { char *hosts[5]; };
+
+void stop_pcap(context *ctx) {
+  printf("test\n");
+  ctx->paused = 1;
+
+  // pcap_breakloop(ctx->handle);
+}
 
 void handle_command(char *words[], int len, context *ctx) {
-  printf("strlen(words[0]): %zu\n", strlen(words[0]));
+  // printf("strlen(words[0]): %zu\n", strlen(words[0]));
   char *verb = words[0];
   if (strcmp(verb, "hostname") == 0) {
     char **args = words + 2;
@@ -90,6 +153,8 @@ void handle_command(char *words[], int len, context *ctx) {
   } else if (strcmp(verb, "server") == 0) {
     if (strcmp(words[1], "start") == 0) {
       start_pcap(ctx);
+    } else if (strcmp(words[1], "stop") == 0) {
+      stop_pcap(ctx);
     }
   } else {
     fprintf(stderr, "Command not known!\n");
@@ -116,9 +181,9 @@ int extract_words_from_input(char *str, char *words[MAX_WORDS],
   } while ((str_token = strtok(NULL, separators)) != NULL);
 
   *words_len = word_count;
-  for (size_t i = 0; i < word_count; i++) {
-    printf("words: %s\n", words[i]);
-  }
+  // for (size_t i = 0; i < word_count; i++) {
+  //   printf("words: %s\n", words[i]);
+  // }
 
   return 1;
 };

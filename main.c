@@ -43,6 +43,7 @@ int main() {
   int server_thread_res;
   pthread_t db_writer_thread;
   pthread_t server_thread;
+  pthread_t pcap_thread;
 
   context *ctx = malloc(sizeof(context));
   if (ctx == NULL) {
@@ -54,7 +55,9 @@ int main() {
   ctx->db = db;
 
   pthread_mutex_init(&ctx->mutex, NULL);
+  pthread_mutex_init(&ctx->mutex2, NULL);
   pthread_cond_init(&ctx->condition, NULL);
+  pthread_cond_init(&ctx->condition2, NULL);
 
   db_writer_thread_res =
       pthread_create(&db_writer_thread, NULL, session_db_writer_thread, ctx);
@@ -63,6 +66,8 @@ int main() {
     fprintf(stderr, "error while creating threads!\n");
     exit(EXIT_FAILURE);
   }
+  server_thread_res =
+      pthread_create(&server_thread, NULL, socket_server_thread, ctx);
 
   domain_cache_t cache;
   ht *ip_to_domain = ht_create();
@@ -74,63 +79,34 @@ int main() {
 
   ctx->sessions_table = ht_create();
   ctx->q = init_queue();
-
-  struct bpf_program fp;
-  ctx->bpf = &fp;
+  // ctx->has_hostnames_to_listen = (ip_to_domain->count > 0);
 
   init_ip_to_domain_from_db(ip_to_domain, db);
+  ctx->paused = ip_to_domain->count == 0;
 
-  char error_buffer[PCAP_ERRBUF_SIZE];
-  const char *device = "en0";
-  pcap_t *handle;
-  handle = pcap_open_live(device, BUFSIZ, 0, 1000, error_buffer);
-  if (handle == NULL) {
-    fprintf(stderr, "Erreur: %s\n", error_buffer);
-    exit(EXIT_FAILURE);
-  }
-  ctx->handle = handle;
-  bpf_u_int32 net, mask;
-  pcap_lookupnet(device, &net, &mask, error_buffer);
+  int pcap_thread_res =
+      pthread_create(&pcap_thread, NULL, pcap_runner_thread, ctx);
 
-  ctx->mask = &mask;
-
-  if (ip_to_domain->count > 0) {
-
-    printf("ip_to_domain->count: %zu\n", ip_to_domain->count);
-
-    char *filter = build_filter_from_ip_to_domain(ip_to_domain);
-
-    if (pcap_compile(handle, &fp, filter, 1, mask)) {
-      fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(handle));
-      exit(EXIT_FAILURE);
-    }
-    if (pcap_setfilter(handle, &fp) == -1) {
-      fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(handle));
-      exit(EXIT_FAILURE);
-    }
-    if (pcap_loop(handle, -1, packet_handler, (u_char *)ctx)) {
-      fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(handle));
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  server_thread_res =
-      pthread_create(&server_thread, NULL, socket_server_thread, ctx);
-  printf("ip_to_domain->count: %zu\n", ip_to_domain->count);
-
-  if (server_thread_res) {
+  if (server_thread_res | pcap_thread_res) {
     fprintf(stderr, "error while creating threads!\n");
     exit(EXIT_FAILURE);
   }
-  // TODO: ne pas caster
 
-  // init_ip_to_domain_and_filter(&cache, (char **)argv + 1, &filter);
+  // Bloquant
+  // if (pcap_loop(handle, -1, packet_handler, (u_char *)ctx)) {
+  //   fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(handle));
+  //   exit(EXIT_FAILURE);
+  // }
+  printf("test\n");
 
+  // Bloquant
   pthread_join(db_writer_thread, NULL);
   pthread_join(server_thread, NULL);
+  pthread_join(pcap_thread, NULL);
 
   pthread_mutex_destroy(&ctx->mutex);
   pthread_cond_destroy(&ctx->condition);
+  pthread_cond_destroy(&ctx->condition2);
 
   ht_destroy(ctx->domain_cache->ip_to_domain);
   ht_destroy(ctx->sessions_table);
