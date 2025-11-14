@@ -6,13 +6,17 @@
 #include <pcap/pcap.h>
 #include <sqlite3.h>
 
-typedef struct ssession {
-  // int id;
+typedef struct active_session {
   char *hostname;
   time_t first_visit;
   time_t last_visit;
   int time_to_save;
-} session;
+} active_session_t;
+
+typedef struct session_stats {
+  char *hostname;
+  int total_duration;
+} session_stats_t;
 
 typedef struct domain_cache {
   ht *ip_to_domain;
@@ -44,11 +48,13 @@ char *build_filter_from_ip_to_domain(ht *table);
 int init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);
 void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
                             sqlite3 *db);
-session *create_session(time_t timestamp, char *hostname);
-int insert_session(session *s, sqlite3 *db);
+active_session_t *create_session(time_t timestamp, char *hostname);
+int insert_session(active_session_t *s, sqlite3 *db);
 
 void packet_handler(u_char *user, const struct pcap_pkthdr *header,
                     const u_char *packet);
 
+void get_sessions_stats_from_db(sqlite3 *db, int *len,
+                                session_stats_t *sessions_stats[]);
 void get_hostnames_from_db(sqlite3 *db, int *len, char ***hostnames);
 #endif

@@ -29,7 +29,7 @@ void *session_db_writer_thread(void *data) {
     pthread_cond_wait(&ctx->condition, &ctx->mutex);
     while (!is_empty(ctx->q)) {
 
-      session *s = (session *)dequeue(ctx->q);
+      active_session_t *s = (active_session_t *)dequeue(ctx->q);
       insert_session(s, ctx->db);
     }
   }
@@ -136,6 +136,18 @@ void stop_pcap(context *ctx) {
   // pcap_breakloop(ctx->handle);
 }
 
+void get_stats(context *ctx) {
+  printf("get_stats\n");
+  int len = 0;
+  session_stats_t *s = malloc(sizeof(session_stats_t));
+  get_sessions_stats_from_db(ctx->db, &len, &s);
+
+  for (size_t i = 0; i < len; i++) {
+    printf("s[i]: hostname:  %s\n", s[i].hostname);
+    printf("s[i]: total_duration:  %d\n", s[i].total_duration);
+  }
+}
+
 void handle_command(char *words[], int len, context *ctx) {
   // printf("strlen(words[0]): %zu\n", strlen(words[0]));
   char *verb = words[0];
@@ -156,6 +168,9 @@ void handle_command(char *words[], int len, context *ctx) {
     } else if (strcmp(words[1], "stop") == 0) {
       stop_pcap(ctx);
     }
+  } else if (strcmp(verb, "stats") == 0) {
+    get_stats(ctx);
+
   } else {
     fprintf(stderr, "Command not known!\n");
   }

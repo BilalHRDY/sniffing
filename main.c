@@ -20,7 +20,7 @@ void init_db(sqlite3 **db) {
     printf("Error while sqlite3_open: %s\n", sqlite3_errmsg(*db));
   }
 
-  const char *sql = "CREATE TABLE IF NOT EXISTS sessions("
+  const char *sql = "CREATE TABLE IF NOT EXISTS host_stats("
                     "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
                     "HOSTNAME          TEXT     NOT NULL UNIQUE,"
                     "TOTAL_DURATION           INTEGER     NOT NULL);";

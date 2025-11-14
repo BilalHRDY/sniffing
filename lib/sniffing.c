@@ -20,7 +20,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
   get_dst_ip_string_from_packets(packet, ipstr, version);
   char *hostname = ht_get(ctx->domain_cache->ip_to_domain, ipstr);
 
-  session *s = ht_get(ctx->sessions_table, hostname);
+  active_session_t *s = ht_get(ctx->sessions_table, hostname);
   if (s == NULL) {
     printf("  CREATE SESSION --------------------, %s\n", hostname);
     s = create_session(header->ts.tv_sec, hostname);
@@ -49,8 +49,8 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
            s->last_visit);
     s->time_to_save += header->ts.tv_sec - s->last_visit;
     s->last_visit = header->ts.tv_sec;
-    session *session_copy = malloc(sizeof(session));
-    memcpy(session_copy, s, sizeof(session));
+    active_session_t *session_copy = malloc(sizeof(active_session_t));
+    memcpy(session_copy, s, sizeof(active_session_t));
     enqueue(ctx->q, session_copy);
     pthread_cond_signal(&ctx->condition);
     s->time_to_save = 0;
@@ -116,13 +116,12 @@ static void build_ip_domain_table(ht *ip_to_domain, int domains_len,
 void get_hostnames_from_db(sqlite3 *db, int *len, char ***hostnames) {
   *len = 0;
   sqlite3_stmt *stmt;
-  char *sql = "SELECT HOSTNAME FROM sessions";
+  char *sql = "SELECT HOSTNAME FROM host_stats";
   int rc;
-  char *errmsg;
   rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
-    printf("SQL error: %s\n", errmsg);
-    sqlite3_free(errmsg);
+    fprintf(stderr, "sqlite3_prepare_v2 failed: %s\n", sqlite3_errmsg(db));
+    exit(EXIT_FAILURE);
   }
 
   while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
@@ -131,6 +130,32 @@ void get_hostnames_from_db(sqlite3 *db, int *len, char ***hostnames) {
       perror("realloc");
     }
     (*hostnames)[(*len)++] = strdup((const char *)sqlite3_column_text(stmt, 0));
+  }
+}
+
+void get_sessions_stats_from_db(sqlite3 *db, int *len,
+                                session_stats_t *sessions_stats[]) {
+  *len = 0;
+  sqlite3_stmt *stmt;
+  char *sql = "SELECT HOSTNAME, TOTAL_DURATION FROM host_stats";
+  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    fprintf(stderr,
+            "get_sessions_stats_from_db: sqlite3_prepare_v2 failed: %s\n",
+            sqlite3_errmsg(db));
+    exit(EXIT_FAILURE);
+  }
+
+  while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+    *sessions_stats =
+        realloc(*sessions_stats, ((*len) + 1) * sizeof(session_stats_t));
+    if (!*sessions_stats) {
+      perror("realloc");
+    }
+    (*sessions_stats)[(*len)].hostname =
+        strdup((const char *)sqlite3_column_text(stmt, 0));
+    (*sessions_stats)[(*len)].total_duration = sqlite3_column_int(stmt, 1);
+    (*len)++;
   }
 }
 
@@ -208,7 +233,7 @@ int is_string_in_array(char *target, char **to_compare, int len) {
 }
 
 int insert_default_session_in_db(sqlite3 *db, char *domain) {
-  const char *sql = "INSERT INTO sessions (HOSTNAME, TOTAL_DURATION)"
+  const char *sql = "INSERT INTO host_stats (HOSTNAME, TOTAL_DURATION)"
                     "VALUES(?, ?);";
 
   sqlite3_stmt *stmt;
@@ -283,9 +308,9 @@ char *build_filter_from_ip_to_domain(ht *ip_to_domain) {
   return filter;
 }
 
-session *create_session(time_t timestamp, char *hostname) {
+active_session_t *create_session(time_t timestamp, char *hostname) {
 
-  session *s = malloc(sizeof(session));
+  active_session_t *s = malloc(sizeof(active_session_t));
   if (s == NULL) {
     fprintf(stderr, "malloc error for session!\n");
     exit(EXIT_FAILURE);
@@ -322,9 +347,9 @@ void get_dst_ip_string_from_packets(const u_char *packet, char *ipstr,
   }
 }
 
-int insert_session(session *s, sqlite3 *db) {
+int insert_session(active_session_t *s, sqlite3 *db) {
 
-  const char *sql = "INSERT INTO sessions (HOSTNAME, TOTAL_DURATION)"
+  const char *sql = "INSERT INTO host_stats (HOSTNAME, TOTAL_DURATION)"
                     "VALUES(?, ?) ON CONFLICT(HOSTNAME)"
                     "DO UPDATE SET TOTAL_DURATION = TOTAL_DURATION + "
                     "excluded.TOTAL_DURATION;";
@@ -332,7 +357,8 @@ int insert_session(session *s, sqlite3 *db) {
   sqlite3_stmt *stmt;
   int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
-    fprintf(stderr, "Erreur de préparation: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "insert_session: sqlite3_prepare_v2 failed: %s\n",
+            sqlite3_errmsg(db));
     return -1;
   }
 

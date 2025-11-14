@@ -24,11 +24,11 @@ void print_session_table(ht *table) {
   for (int i = 0; i < table->capacity; i++)
     if (table->items[i].value != NULL) {
       printf("key: %s, value: %p -> ", table->items[i].key,
-             (session *)table->items[i].value);
+             (active_session_t *)table->items[i].value);
       printf("{first_visit: %ld,last_visit: %ld, time_to_save %d}\n",
-             ((session *)table->items[i].value)->first_visit,
-             ((session *)table->items[i].value)->last_visit,
-             ((session *)table->items[i].value)->time_to_save);
+             ((active_session_t *)table->items[i].value)->first_visit,
+             ((active_session_t *)table->items[i].value)->last_visit,
+             ((active_session_t *)table->items[i].value)->time_to_save);
     }
 
     else
