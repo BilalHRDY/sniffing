@@ -4,18 +4,6 @@
 #include <string.h>
 #include <unistd.h>
 
-int has_null_terminator(const char *s) {
-  int i = 0;
-  while (1) {
-    if (s[i] == '\0') {
-      printf("has_null_terminator!\n");
-      return 1;
-    }
-    printf("s[i]: %c\n", s[i]);
-    i++;
-  }
-}
-
 int init_client_request(char *data, uds_request_t *req) {
 
   if (strlen(data) + 1 > UDS_DATA_SIZE) {

@@ -1,5 +1,6 @@
+#include "lib/db.h"
 #include "lib/sniffing.h"
-#include "lib/threads/threads.h"
+#include "lib/socket_server.h"
 #include <arpa/inet.h>
 #include <pcap/pcap.h>
 #include <pthread.h>
@@ -9,29 +10,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-void init_db(sqlite3 **db) {
-
-  char *database_name = "sniffing.db";
-  char *errmsg;
-
-  int rc = sqlite3_open(database_name, db);
-  if (rc) {
-    printf("Error while sqlite3_open: %s\n", sqlite3_errmsg(*db));
-  }
-
-  const char *sql = "CREATE TABLE IF NOT EXISTS host_stats("
-                    "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
-                    "HOSTNAME          TEXT     NOT NULL UNIQUE,"
-                    "TOTAL_DURATION           INTEGER     NOT NULL);";
-
-  rc = sqlite3_exec(*db, sql, NULL, NULL, &errmsg);
-  if (rc != SQLITE_OK) {
-    printf("SQL error: %s\n", errmsg);
-    sqlite3_free(errmsg);
-    exit(EXIT_FAILURE);
-  }
-}
 
 int main() {
   sqlite3 *db;
