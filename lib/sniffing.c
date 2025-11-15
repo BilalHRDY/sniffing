@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <unistd.h>
 /**
  * Extracts the destination IP address from a captured network packet
  * and converts it into a human-readable string.
@@ -186,7 +186,6 @@ void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
 
 // PCAP + cache + filter
 void *pcap_runner_thread(void *data) {
-  printf("pcap_loop\n");
   context *ctx = (context *)data;
 
   struct bpf_program fp;
@@ -223,18 +222,42 @@ void *pcap_runner_thread(void *data) {
   printf("ip_to_domain->count: %zu\n", ctx->domain_cache->ip_to_domain->count);
 
   char *filter = NULL;
+  // while (1) {
+  //   printf("wait...\n");
+  //   printf("thread : ctx->paused: %d\n", ctx->paused);
+  //   // if (ctx->paused) {
+  //   pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
+  //   // }
+  //   while (!ctx->paused) {
+  //     printf("is starting...\n");
+  //     pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
+  //     printf("end of loop\n");
+  //   }
+  // }
+
+  pthread_mutex_lock(&ctx->mutex2);
+  usleep(1000);
   while (1) {
-    printf("wait...\n");
-    printf("ctx->paused: %d\n", ctx->paused);
-    if (ctx->paused) {
+
+    // attendre que paused == 0
+    while (ctx->paused) {
+      printf("wait...\n");
       pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
     }
+
+    printf("is starting...\n");
+
+    // exécuter tant que paused == 0
     while (!ctx->paused) {
-      printf("is starting...\n");
+      pthread_mutex_unlock(&ctx->mutex2); // libérer pour pcap
       pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
-      printf("end of loop\n");
+      // pthread_mutex_lock(&ctx->mutex2);
     }
+
+    printf("paused again\n");
   }
+
+  // pthread_mutex_unlock(&ctx->mutex2);
 
   printf("end of thread\n");
   return NULL;
@@ -259,7 +282,7 @@ void add_hosts_to_listen(char *domains[], int len, context *ctx) {
 };
 
 // PCAP + DB
-void start_pcap(context *ctx) {
+void start_pcap_cmd(context *ctx) {
 
   char **hostnames = NULL;
   int len;
@@ -269,16 +292,20 @@ void start_pcap(context *ctx) {
     fprintf(stderr, "no hostname!\n");
     return;
   }
-  ctx->paused = 0;
-  pthread_cond_signal(&ctx->condition2);
 
-  // // TODO créer une constante pour -1
-  // if (pcap_loop(ctx->handle, -1, packet_handler, (u_char *)ctx)) {
-  //   fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(ctx->handle));
-  //   exit(EXIT_FAILURE);
-  // }
+  start_pcap(ctx);
 }
 
+// void start_pcap(context *ctx) {
+//   ctx->paused = 0;
+//   pthread_cond_signal(&ctx->condition2);
+// }
+void start_pcap(context *ctx) {
+  // pthread_mutex_lock(&ctx->mutex2);
+  ctx->paused = 0; // signal qu’on veut démarrer
+  pthread_cond_signal(&ctx->condition2);
+  // pthread_mutex_unlock(&ctx->mutex2);
+}
 // PCAP
 void stop_pcap(context *ctx) {
   printf("test\n");
@@ -287,7 +314,7 @@ void stop_pcap(context *ctx) {
   // pcap_breakloop(ctx->handle);
 }
 
-// DB
+// DB + session_stats_t
 void get_stats(context *ctx) {
   printf("get_stats\n");
   int len = 0;

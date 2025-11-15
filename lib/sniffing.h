@@ -41,20 +41,9 @@ typedef struct context {
   queue *q;
 } context;
 
-// void init_ip_to_domain_and_filter(domain_cache_t *cache, char *domains[],
-//                                   char **filter);
-// void get_dst_ip_string_from_packets(const u_char *packet, char *ipstr,
-//                                     int version);
-// char *build_filter_from_ip_to_domain(ht *table);
 int init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);
-// void update_ip_domain_table(ht *ip_to_domain, int domains_len, char
-// *domains[],
-//                             sqlite3 *db);
-// active_session_t *create_session(time_t timestamp, char *hostname);
-
-// void packet_handler(u_char *user, const struct pcap_pkthdr *header,
-//                     const u_char *packet);
 void add_hosts_to_listen(char *domains[], int len, context *ctx);
+void start_pcap_cmd(context *ctx);
 void start_pcap(context *ctx);
 void stop_pcap(context *ctx);
 void get_stats(context *ctx);

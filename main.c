@@ -60,7 +60,8 @@ int main() {
   // ctx->has_hostnames_to_listen = (ip_to_domain->count > 0);
 
   init_ip_to_domain_from_db(ip_to_domain, db);
-  ctx->paused = ip_to_domain->count == 0;
+  ctx->paused = 1;
+  printf("ctx->paused: %d\n", ctx->paused);
 
   int pcap_thread_res =
       pthread_create(&pcap_thread, NULL, pcap_runner_thread, ctx);
@@ -70,12 +71,10 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  // Bloquant
-  // if (pcap_loop(handle, -1, packet_handler, (u_char *)ctx)) {
-  //   fprintf(stderr, "Erreur pcap_loop: %s\n", pcap_geterr(handle));
-  //   exit(EXIT_FAILURE);
-  // }
-  printf("test\n");
+  if (ip_to_domain->count > 0) {
+    printf("start thread from main\n");
+    start_pcap(ctx);
+  }
 
   // Bloquant
   pthread_join(db_writer_thread, NULL);

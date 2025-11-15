@@ -31,7 +31,7 @@ void handle_command(char *words[], int len, context *ctx) {
 
   } else if (strcmp(verb, "server") == 0) {
     if (strcmp(words[1], "start") == 0) {
-      start_pcap(ctx);
+      start_pcap_cmd(ctx);
     } else if (strcmp(words[1], "stop") == 0) {
       stop_pcap(ctx);
     }
