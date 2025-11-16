@@ -72,7 +72,6 @@ int main() {
   }
 
   if (ip_to_domain->count > 0) {
-    printf("start thread from main\n");
     start_pcap(ctx);
   }
 

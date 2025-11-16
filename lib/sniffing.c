@@ -99,33 +99,49 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
 };
 
 // pcap + ip
-static void add_ip_in_filter(const char *ip, char **filter, char *separator,
-                             int is_last_ip) {
+static SNIFFING_API add_ip_in_filter(const char *ip, char **filter,
+                                     char *separator, int is_last_ip) {
   *filter = realloc(*filter, strlen(*filter) + strlen(ip) + 1);
+  if (*filter == NULL) {
+    perror("add_ip_in_filter: realloc failed");
+    return SNIFFING_MEMORY_ERROR;
+  }
   strcat(*filter, ip);
   if (is_last_ip) {
     *filter = realloc(*filter, strlen(*filter) + 2);
+    if (*filter == NULL) {
+      perror("add_ip_in_filter: realloc failed");
+      return SNIFFING_MEMORY_ERROR;
+    }
     strcat(*filter, ")");
   } else if (separator != NULL) {
     *filter = realloc(*filter, strlen(*filter) + strlen(separator) + 1);
+    if (*filter == NULL) {
+      perror("add_ip_in_filter: realloc failed");
+      return SNIFFING_MEMORY_ERROR;
+    }
     strcat(*filter, separator);
   }
+  return SNIFFING_OK;
 }
 
 // pcap + ip + cache
-char *build_filter_from_ip_to_domain(ht *ip_to_domain) {
-  char *filter = strdup("ip or ip6 and (dst host ");
+SNIFFING_API build_filter_from_ip_to_domain(ht *ip_to_domain, char **filter) {
+  *filter = strdup("ip or ip6 and (dst host ");
 
   char *separator = " or dst host ";
   hti it = ht_iterator(ip_to_domain);
   bool is_last_ip = false;
+  SNIFFING_API rc;
+
   while (ht_next(&it)) {
     is_last_ip = (it.visited == ht_length(ip_to_domain));
-    add_ip_in_filter(it.key, &filter, separator, is_last_ip);
+    if ((rc = add_ip_in_filter(it.key, filter, separator, is_last_ip)) !=
+        SNIFFING_OK) {
+      return rc;
+    }
   }
-
-  printf("filter: %s\n", filter);
-  return filter;
+  return SNIFFING_OK;
 }
 
 void *session_db_writer_thread(void *data) {
@@ -136,7 +152,6 @@ void *session_db_writer_thread(void *data) {
   while (1) {
     pthread_cond_wait(&ctx->condition, &ctx->mutex);
     while (!is_empty(ctx->q)) {
-
       active_session_t *s = (active_session_t *)dequeue(ctx->q);
       insert_session(s, ctx->db);
     }
@@ -146,14 +161,20 @@ void *session_db_writer_thread(void *data) {
 }
 
 // cache + db + ip
-void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
-                            sqlite3 *db) {
+SNIFFING_API update_ip_domain_table(ht *ip_to_domain, int domains_len,
+                                    char *domains[], sqlite3 *db) {
   struct addrinfo *res;
   char ipstr[INET6_ADDRSTRLEN];
   void *addr;
   char **hostnames = NULL;
   int len = 0;
-  get_hostnames_from_db(db, &len, &hostnames);
+  // TODO remplace par rc
+  int status;
+  SNIFFING_API rc;
+
+  if ((rc = get_hostnames_from_db(db, &len, &hostnames)) != SNIFFING_OK) {
+    return rc;
+  };
 
   for (size_t i = 0; i < domains_len; i++) {
     if (is_string_in_array(domains[i], hostnames, len)) {
@@ -161,7 +182,15 @@ void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
       continue;
     }
     // TODO vérifier avec une regex le domaine
-    res = fetch_host_ip(domains[i]);
+    status = fetch_host_ip(domains[i], &res);
+    if (status != 0) {
+      free(hostnames);
+      if (status == EAI_NONAME) {
+        return SNIFFING_HOSTNAME_NOT_KNOWN;
+      } else {
+        return SNIFFING_INTERNAL_ERROR;
+      }
+    }
     struct addrinfo *p = res;
 
     while (p != NULL) {
@@ -174,7 +203,11 @@ void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
       p = p->ai_next;
     }
 
-    insert_default_session_in_db(db, domains[i]);
+    if ((rc = insert_default_session_in_db(db, domains[i])) != SNIFFING_OK) {
+      free(hostnames);
+      return rc;
+    };
+
     freeaddrinfo(res);
   }
   for (int i = 0; i < len; i++) {
@@ -182,6 +215,7 @@ void update_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[],
   }
   free(hostnames);
   print_hash_table(ip_to_domain);
+  return SNIFFING_OK;
 };
 
 // PCAP + cache + filter
@@ -206,8 +240,9 @@ void *pcap_runner_thread(void *data) {
   ctx->mask = &mask;
 
   if (!ctx->paused) {
-    char *filter =
-        build_filter_from_ip_to_domain(ctx->domain_cache->ip_to_domain);
+    char *filter;
+
+    build_filter_from_ip_to_domain(ctx->domain_cache->ip_to_domain, &filter);
 
     if (pcap_compile(handle, &fp, filter, 1, mask)) {
       fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(handle));
@@ -222,123 +257,157 @@ void *pcap_runner_thread(void *data) {
   printf("ip_to_domain->count: %zu\n", ctx->domain_cache->ip_to_domain->count);
 
   char *filter = NULL;
-  // while (1) {
-  //   printf("wait...\n");
-  //   printf("thread : ctx->paused: %d\n", ctx->paused);
-  //   // if (ctx->paused) {
-  //   pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
-  //   // }
-  //   while (!ctx->paused) {
-  //     printf("is starting...\n");
-  //     pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
-  //     printf("end of loop\n");
-  //   }
-  // }
 
+  // printf("thread lock\n");
   pthread_mutex_lock(&ctx->mutex2);
-  usleep(1000);
+  // printf("thread in lock\n");
+
   while (1) {
 
     // attendre que paused == 0
     while (ctx->paused) {
-      printf("wait...\n");
+      // printf("thread wait\n");
       pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
     }
-
-    printf("is starting...\n");
-
+    // printf("thread is starting...\n");
     // exécuter tant que paused == 0
     while (!ctx->paused) {
       pthread_mutex_unlock(&ctx->mutex2); // libérer pour pcap
       pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
-      // pthread_mutex_lock(&ctx->mutex2);
+      pthread_mutex_lock(&ctx->mutex2);
     }
-
-    printf("paused again\n");
+    // printf("paused again\n");
   }
 
-  // pthread_mutex_unlock(&ctx->mutex2);
-
-  printf("end of thread\n");
+  pthread_mutex_unlock(&ctx->mutex2);
+  // printf("end of thread\n");
   return NULL;
 }
 
 // PCAP + cache + filter
-void add_hosts_to_listen(char *domains[], int len, context *ctx) {
+SNIFFING_API add_hosts_to_listen_cmd(char *domains[], int len, context *ctx) {
   ht *ip_to_domain = ctx->domain_cache->ip_to_domain;
+  SNIFFING_API rc;
+  char *filter;
+  if ((rc = update_ip_domain_table(ip_to_domain, len, domains, ctx->db)) !=
+      SNIFFING_OK) {
+    return rc;
+  }
 
-  update_ip_domain_table(ip_to_domain, len, domains, ctx->db);
-  char *filter = build_filter_from_ip_to_domain(ip_to_domain);
+  if ((rc = build_filter_from_ip_to_domain(ip_to_domain, &filter)) !=
+      SNIFFING_OK) {
+    return rc;
+  }
 
   if (pcap_compile(ctx->handle, ctx->bpf, filter, 1, *(ctx->mask))) {
     fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(ctx->handle));
-    exit(EXIT_FAILURE);
+    return SNIFFING_INTERNAL_ERROR;
   }
+
   if (pcap_setfilter(ctx->handle, ctx->bpf) == -1) {
     fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(ctx->handle));
-    exit(EXIT_FAILURE);
+    return SNIFFING_INTERNAL_ERROR;
   }
-  printf("ok\n");
+  return SNIFFING_OK;
 };
 
 // PCAP + DB
-void start_pcap_cmd(context *ctx) {
+SNIFFING_API start_pcap_cmd(context *ctx) {
 
   char **hostnames = NULL;
   int len;
-  get_hostnames_from_db(ctx->db, &len, &hostnames);
+  SNIFFING_API rc;
+
+  if ((rc = get_hostnames_from_db(ctx->db, &len, &hostnames)) != SNIFFING_OK) {
+    return rc;
+  };
 
   if (!len) {
-    fprintf(stderr, "no hostname!\n");
-    return;
+    fprintf(stderr, "start_pcap_cmd : no hostname in db!\n");
+    return SNIFFING_NO_HOSTNAME_IN_DB;
   }
 
-  start_pcap(ctx);
+  if ((rc = start_pcap(ctx)) != 0) {
+    free(hostnames);
+    return rc;
+  };
+
+  return SNIFFING_OK;
 }
 
 // void start_pcap(context *ctx) {
 //   ctx->paused = 0;
 //   pthread_cond_signal(&ctx->condition2);
 // }
-void start_pcap(context *ctx) {
-  // pthread_mutex_lock(&ctx->mutex2);
-  ctx->paused = 0; // signal qu’on veut démarrer
+SNIFFING_API start_pcap(context *ctx) {
+  // printf("start lock\n");
+  pthread_mutex_lock(&ctx->mutex2);
+  // printf("start in lock\n");
+
+  ctx->paused = 0;
+  // printf("start send signal\n");
+
   pthread_cond_signal(&ctx->condition2);
-  // pthread_mutex_unlock(&ctx->mutex2);
+  // printf("start unlock\n");
+  pthread_mutex_unlock(&ctx->mutex2);
+
+  return SNIFFING_OK;
 }
+
 // PCAP
-void stop_pcap(context *ctx) {
-  printf("test\n");
+SNIFFING_API stop_pcap_cmd(context *ctx) {
+  // printf("stop lock\n");
+  pthread_mutex_lock(&ctx->mutex2);
+  // printf("stop in lock\n");
+
   ctx->paused = 1;
+  pthread_mutex_unlock(&ctx->mutex2);
+  // printf("stop unlock\n");
 
   // pcap_breakloop(ctx->handle);
+  return SNIFFING_OK;
 }
 
 // DB + session_stats_t
-void get_stats(context *ctx) {
-  printf("get_stats\n");
+SNIFFING_API get_stats_cmd(context *ctx, session_stats_t **s) {
+  printf("get_stats_cmd\n");
   int len = 0;
-  session_stats_t *s = malloc(sizeof(session_stats_t));
-  get_sessions_stats_from_db(ctx->db, &len, &s);
+  SNIFFING_API rc;
 
-  for (size_t i = 0; i < len; i++) {
-    printf("s[i]: hostname:  %s\n", s[i].hostname);
-    printf("s[i]: total_duration:  %d\n", s[i].total_duration);
+  // *s = malloc(sizeof(session_stats_t));
+  rc = get_sessions_stats_from_db(ctx->db, &len, s);
+  if (rc != SNIFFING_OK) {
+    free(s);
   }
+  for (size_t i = 0; i < len; i++) {
+    printf("s[i]: hostname:  %s\n", (*s[i]).hostname);
+    printf("s[i]: total_duration:  %d\n", (*s[i]).total_duration);
+  }
+  return rc;
 }
 
 // pcap + active_session_t
 
-void build_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[]) {
-  print_hash_table(ip_to_domain);
+SNIFFING_API build_ip_domain_table(ht *ip_to_domain, int domains_len,
+                                   char *domains[]) {
+  // print_hash_table(ip_to_domain);
   struct addrinfo *res;
   char ipstr[INET6_ADDRSTRLEN];
   void *addr;
+  int status;
 
   for (size_t i = 0; i < domains_len; i++) {
     // TODO vérifier avec une regex le domaine
-    printf("domain: %s\n", domains[i]);
-    res = fetch_host_ip(domains[i]);
+    // printf("domain: %s\n", domains[i]);
+    status = fetch_host_ip(domains[i], &res);
+    if (status != 0) {
+      freeaddrinfo(res);
+      if (status == EAI_NONAME) {
+        return SNIFFING_HOSTNAME_NOT_KNOWN;
+      } else {
+        return SNIFFING_INTERNAL_ERROR;
+      }
+    }
     struct addrinfo *p = res;
 
     while (p != NULL) {
@@ -350,27 +419,36 @@ void build_ip_domain_table(ht *ip_to_domain, int domains_len, char *domains[]) {
     }
     freeaddrinfo(res);
   }
-  print_hash_table(ip_to_domain);
+  return SNIFFING_OK;
+
+  // print_hash_table(ip_to_domain);
 };
 
 // db + cache
-int init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db) {
+SNIFFING_API init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db) {
   char **hostnames = NULL;
   int len = 0;
+  SNIFFING_API rc = SNIFFING_OK;
 
-  get_hostnames_from_db(db, &len, &hostnames);
-  build_ip_domain_table(ip_to_domain, len, hostnames);
+  rc = get_hostnames_from_db(db, &len, &hostnames);
+  if (rc != SNIFFING_OK) {
+    free(hostnames);
+    return rc;
+  }
+
+  rc = build_ip_domain_table(ip_to_domain, len, hostnames);
   free(hostnames);
 
-  return 1;
+  return rc;
 }
 
 // ip + pcap
-void init_ip_to_domain_and_filter(domain_cache_t *cache, char *domains[],
-                                  char **filter) {
+SNIFFING_API init_ip_to_domain_and_filter(domain_cache_t *cache,
+                                          char *domains[], char **filter) {
   struct addrinfo *res;
   char ipstr[INET6_ADDRSTRLEN];
   void *addr;
+  int status;
 
   // TODO enlever strdup ?
   *filter = strdup("ip or ip6 and (dst host ");
@@ -380,7 +458,14 @@ void init_ip_to_domain_and_filter(domain_cache_t *cache, char *domains[],
   for (size_t i = 0; domains[i] != NULL; i++) {
 
     printf("domain: %s\n", domains[i]);
-    res = fetch_host_ip(domains[i]);
+    status = fetch_host_ip(domains[i], &res);
+    if (status != 0) {
+      if (status == EAI_NONAME) {
+        return SNIFFING_HOSTNAME_NOT_KNOWN;
+      } else {
+        return SNIFFING_INTERNAL_ERROR;
+      }
+    }
 
     cache->hostnames[i] = strdup(domains[i]);
     struct addrinfo *p = res;
@@ -397,10 +482,9 @@ void init_ip_to_domain_and_filter(domain_cache_t *cache, char *domains[],
     }
     freeaddrinfo(res);
   }
-
   // for (size_t i = 0; i < count; i++) {
   //   printf(" cache->hostnames[i]: %s\n", cache->hostnames[i]);
   // }
-
-  printf("filter: %s\n", *filter);
+  // printf("filter: %s\n", *filter);
+  return SNIFFING_OK;
 }

@@ -7,6 +7,16 @@
 #include <pcap/pcap.h>
 #include <sqlite3.h>
 
+typedef enum {
+  SNIFFING_OK = 0,
+  SNIFFING_INTERNAL_ERROR,
+  SNIFFING_TOO_MANY_ARGUMENTS,
+  SNIFFING_COMMAND_NOT_KNOWN,
+  SNIFFING_HOSTNAME_NOT_KNOWN,
+  SNIFFING_NO_HOSTNAME_IN_DB,
+  SNIFFING_MEMORY_ERROR,
+
+} SNIFFING_API;
 typedef struct active_session {
   char *hostname;
   time_t first_visit;
@@ -41,12 +51,12 @@ typedef struct context {
   queue *q;
 } context;
 
-int init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);
-void add_hosts_to_listen(char *domains[], int len, context *ctx);
-void start_pcap_cmd(context *ctx);
-void start_pcap(context *ctx);
-void stop_pcap(context *ctx);
-void get_stats(context *ctx);
+SNIFFING_API init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);
+SNIFFING_API add_hosts_to_listen_cmd(char *domains[], int len, context *ctx);
+SNIFFING_API start_pcap_cmd(context *ctx);
+SNIFFING_API start_pcap(context *ctx);
+SNIFFING_API stop_pcap_cmd(context *ctx);
+SNIFFING_API get_stats_cmd(context *ctx, session_stats_t **s);
 
 void *session_db_writer_thread(void *data);
 void *pcap_runner_thread(void *data);

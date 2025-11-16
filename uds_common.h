@@ -11,6 +11,7 @@
 typedef struct header {
   unsigned int data_len;
   unsigned int status;
+  // unsigned int response_type;
 } BYTE_ALIGNED header_t;
 
 typedef struct uds_request {

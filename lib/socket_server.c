@@ -24,7 +24,7 @@ void handle_command(char *words[], int len, context *ctx) {
     // TODO checker si il y a bien un 2ème mot
     if (strcmp(words[1], "add") == 0) {
 
-      add_hosts_to_listen(args, args_len, ctx);
+      add_hosts_to_listen_cmd(args, args_len, ctx);
     } else if (strcmp(words[1], "list") == 0) {
       // get_hosts_to_listen(ctx->domain_cache->ip_to_domain);
     }
@@ -33,10 +33,12 @@ void handle_command(char *words[], int len, context *ctx) {
     if (strcmp(words[1], "start") == 0) {
       start_pcap_cmd(ctx);
     } else if (strcmp(words[1], "stop") == 0) {
-      stop_pcap(ctx);
+      stop_pcap_cmd(ctx);
     }
   } else if (strcmp(verb, "stats") == 0) {
-    get_stats(ctx);
+    session_stats_t *s;
+
+    get_stats_cmd(ctx, &s);
 
   } else {
     fprintf(stderr, "Command not known!\n");

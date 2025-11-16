@@ -4,6 +4,10 @@
 
 queue *init_queue() {
   queue *q = malloc(sizeof(queue));
+  if (q == NULL) {
+    perror("init_queue: malloc failed");
+    return NULL;
+  }
   q->head = NULL;
   q->tail = NULL;
   return q;
@@ -13,6 +17,10 @@ void enqueue(queue *q, void *n) {
   printf("  enqueue\n");
 
   item_c *item = malloc(sizeof(item_c));
+  if (item == NULL) {
+    perror("enqueue: malloc failed");
+    return;
+  }
   item->value = n;
   item->next = NULL;
   if (q->head == NULL) {

@@ -5,9 +5,8 @@
 #include <string.h>
 
 // ip
-struct addrinfo *fetch_host_ip(const char *domain) {
-  struct addrinfo hints, *res;
-  void *addr;
+int fetch_host_ip(const char *domain, struct addrinfo **res) {
+  struct addrinfo hints;
   int status;
   char ipstr[INET6_ADDRSTRLEN], ipver;
 
@@ -16,12 +15,12 @@ struct addrinfo *fetch_host_ip(const char *domain) {
   hints.ai_socktype = SOCK_STREAM; // Une seule famille de socket
                                    //   printf("domain: %s\n", domain);
 
-  if ((status = getaddrinfo(domain, NULL, &hints, &res)) != 0) {
+  if ((status = getaddrinfo(domain, NULL, &hints, res)) != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-    exit(EXIT_FAILURE);
+    return status;
   }
 
-  return res;
+  return 0;
 };
 
 // ip
