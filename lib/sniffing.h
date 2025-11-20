@@ -17,12 +17,12 @@ typedef enum {
   SNIFFING_MEMORY_ERROR,
 
 } SNIFFING_API;
-typedef struct active_session {
+typedef struct pcap_session {
   char *hostname;
   time_t first_visit;
   time_t last_visit;
   int time_to_save;
-} active_session_t;
+} pcap_session_t;
 
 typedef struct session_stats {
   char *hostname;

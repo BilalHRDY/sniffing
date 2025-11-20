@@ -71,17 +71,19 @@ int main(int argc, char *argv[]) {
   while (1) {
     printf("sniffing> ");
     read_input(&input_buf);
+
     if (input_buf.input_length == 0) {
+      continue;
+    }
+    if (strlen(input_buf.buffer) + 1 > DATA_SIZE) {
+      fprintf(stderr, "Message is too long!\n");
       continue;
     }
 
     uds_request_t req;
+    init_client_request(input_buf.buffer, &req);
 
-    if (!init_client_request(input_buf.buffer, &req)) {
-      continue;
-    }
-
-    if (!send_request(sfd, &req)) {
+    if (!client_send_request(sfd, &req)) {
       continue;
     }
 
@@ -139,7 +141,7 @@ int main(int argc, char *argv[]) {
 
 // char *handle_input(input_buffer_t *input_buf) {
 //   char *words[5];
-//   int word_count = extract_words_from_input(input_buf, words);
+//   int word_count = extract_words(input_buf, words);
 //   command *cmd = build_command(words, word_count);
 //   return serialize_command(cmd);
 // }

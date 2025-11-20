@@ -10,51 +10,92 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define MAX_WORDS 4
 #define SV_SOCK_PATH "tmp/sniffing_socket"
 #define BACKLOG 3
 
 // command
-void handle_command(char *words[], int len, context *ctx) {
-  // printf("strlen(words[0]): %zu\n", strlen(words[0]));
-  char *verb = words[0];
-  if (strcmp(verb, "hostname") == 0) {
-    char **args = words + 2;
-    int args_len = len - 2;
-    // TODO checker si il y a bien un 2ème mot
-    if (strcmp(words[1], "add") == 0) {
+// void handle_command(uds_request_t *req, context *ctx) {
+//   // printf("strlen(words[0]): %zu\n", strlen(words[0]));
+//   char *verb = words[0];
+//   if (strcmp(verb, "hostname") == 0) {
+//     char **args = words + 2;
+//     int args_len = len - 2;
+//     // TODO checker si il y a bien un 2ème mot
+//     if (strcmp(words[1], "add") == 0) {
 
-      add_hosts_to_listen_cmd(args, args_len, ctx);
-    } else if (strcmp(words[1], "list") == 0) {
-      // get_hosts_to_listen(ctx->domain_cache->ip_to_domain);
-    }
+//       add_hosts_to_listen_cmd(args, args_len, ctx);
+//     } else if (strcmp(words[1], "list") == 0) {
+//       // get_hosts_to_listen(ctx->domain_cache->ip_to_domain);
+//     }
 
-  } else if (strcmp(verb, "server") == 0) {
-    if (strcmp(words[1], "start") == 0) {
-      start_pcap_cmd(ctx);
-    } else if (strcmp(words[1], "stop") == 0) {
-      stop_pcap_cmd(ctx);
-    }
-  } else if (strcmp(verb, "stats") == 0) {
+//   } else if (strcmp(verb, "server") == 0) {
+//     if (strcmp(words[1], "start") == 0) {
+//       start_pcap_cmd(ctx);
+//     } else if (strcmp(words[1], "stop") == 0) {
+//       stop_pcap_cmd(ctx);
+//     }
+//   } else if (strcmp(verb, "stats") == 0) {
+//     session_stats_t *s;
+
+//     get_stats_cmd(ctx, &s);
+
+//   } else {
+//     fprintf(stderr, "Command not known!\n");
+//   }
+// }
+void process_add_hosts_to_listen_cmd(char *hostnames, context *ctx) {
+  char *words[MAX_WORDS];
+  int words_len;
+  extract_words(hostnames, words, &words_len, MAX_WORDS);
+  add_hosts_to_listen_cmd(words, words_len, ctx);
+}
+
+void handle_command(uds_request_t *req, context *ctx) {
+  command_t *cmd = malloc(sizeof(command_t));
+  command_t *p;
+  char *d;
+  p = cmd;
+  d = (char *)(req->data);
+  memcpy(p, d, sizeof(int));
+  p += sizeof(int);
+  d += sizeof(int);
+  memcpy(p, d, req->header.data_len - sizeof(int));
+
+  // cmd.code = req->data;
+  printf("req->header.cmd_code: %d\n", cmd->code);
+  switch (cmd->code) {
+  case CMD_SERVER_START:
+    start_pcap_cmd(ctx);
+    break;
+  case CMD_SERVER_STOP:
+    stop_pcap_cmd(ctx);
+    break;
+  case CMD_HOSTNAME_LIST:
+    break;
+  case CMD_HOSTNAME_ADD:
+    process_add_hosts_to_listen_cmd(cmd->raw_args, ctx);
+    break;
+  case CMD_GET_STATS: {
     session_stats_t *s;
-
     get_stats_cmd(ctx, &s);
-
-  } else {
+  } break;
+  default:
     fprintf(stderr, "Command not known!\n");
+    break;
   }
 }
 
 // socket + command
-void handle_request(char *data, context *ctx) {
-  char *words[MAX_WORDS];
-  int words_len;
-  uds_request_t res;
-  if (!extract_words_from_input(data, words, &words_len, MAX_WORDS)) {
-    // retourner l'erreur au client
-    return;
-  };
-  handle_command(words, words_len, ctx);
+void handle_request(uds_request_t *req, context *ctx) {
+  // char *words[MAX_WORDS];
+  // int words_len;
+  // if (!extract_words(req->data, words, &words_len, MAX_WORDS)) {
+  //   // retourner l'erreur au client
+  //   return;
+  // };
+
+  handle_command(req, ctx);
+  free(req);
 };
 
 // socket + command
@@ -95,27 +136,37 @@ void *socket_server_thread(void *data) {
   }
 
   ssize_t req_len;
-  char buf[UDS_DATA_SIZE];
+  char buf[BUF_SIZE];
   while (true) { /* Handle client connections iteratively */
 
     printf("Waiting to accept a connection...\n");
     int cfd = accept(sfd, NULL, NULL);
     printf("Accepted socket fd = %d\n", cfd);
 
-    while ((req_len = read(cfd, buf, UDS_DATA_SIZE)) > 0) {
-      uds_request_t *req = (uds_request_t *)buf;
+    while ((req_len = read(cfd, buf, sizeof(buf))) > 0) {
+      uds_request_t res;
+      STATUS_CODE rc;
 
-      if (req_len != sizeof(header_t) + req->header.data_len) {
-        fprintf(stderr, "Invalid length of packet\n");
-        continue;
+      if ((rc = verify_packet(buf, req_len)) != STATUS_OK) {
+        res.header.response_status = rc;
+        res.header.data_len = 0;
       }
-      handle_request(req->data, ctx);
-      ssize_t r = write(cfd, "ok!\0", 4);
-    }
 
+      else {
+        printf("req_len: %zu\n", req_len);
+        uds_request_t *req = malloc(req_len);
+        memcpy(req, buf, req_len);
+
+        handle_request(req, ctx);
+        // ssize_t r = write(cfd, "ok!\0", 4);
+      }
+      ssize_t r = write(cfd, &res, sizeof(header_t));
+    }
     if (req_len == -1) {
       perror("Error reading from socket");
-      exit(EXIT_FAILURE);
+    }
+    if (req_len == 0) {
+      printf("client has closed the connection\n");
     }
 
     close(cfd);

@@ -1,8 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-int extract_words_from_input(char *str, char *words[], int *words_len,
-                             int max_words) {
+int extract_words(char *str, char *words[], int *words_len, int max_words) {
 
   const char *separators = " ";
   int word_count = 0;
@@ -22,9 +22,9 @@ int extract_words_from_input(char *str, char *words[], int *words_len,
   } while ((str_token = strtok(NULL, separators)) != NULL);
 
   *words_len = word_count;
-  // for (size_t i = 0; i < word_count; i++) {
-  //   printf("words: %s\n", words[i]);
-  // }
+  for (size_t i = 0; i < word_count; i++) {
+    printf("words: %s\n", words[i]);
+  }
 
   return 1;
 };
@@ -47,7 +47,31 @@ int has_null_terminator(const char *s) {
       printf("has_null_terminator!\n");
       return 1;
     }
-    printf("s[i]: %c\n", s[i]);
     i++;
   }
+}
+
+int strings_equal(char *s1, char *s2) { return strcmp(s1, s2) == 0; }
+
+char *string_list_to_string(char *list[], unsigned int len) {
+
+  size_t total_len = 1; // '\0'
+  for (size_t i = 0; i < len; i++) {
+    total_len += strlen(list[i]);
+  }
+
+  char *res = malloc(total_len);
+  if (!res)
+    return NULL;
+
+  res[0] = '\0';
+
+  for (size_t i = 0; i < len; i++) {
+    strcat(res, list[i]);
+    if (i != len - 1) {
+      strcat(res, " ");
+    }
+  }
+  printf("has_null_terminator: %d\n", has_null_terminator(res));
+  return res;
 }

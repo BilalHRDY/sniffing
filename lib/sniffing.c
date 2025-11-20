@@ -34,10 +34,10 @@ void get_dst_ip_string_from_packets(const u_char *packet, char *ipstr,
   }
 }
 
-// active_session_t
-active_session_t *create_session(time_t timestamp, char *hostname) {
+// pcap_session_t
+pcap_session_t *create_session(time_t timestamp, char *hostname) {
 
-  active_session_t *s = malloc(sizeof(active_session_t));
+  pcap_session_t *s = malloc(sizeof(pcap_session_t));
   if (s == NULL) {
     fprintf(stderr, "malloc error for session!\n");
     exit(EXIT_FAILURE);
@@ -59,7 +59,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
   get_dst_ip_string_from_packets(packet, ipstr, version);
   char *hostname = ht_get(ctx->domain_cache->ip_to_domain, ipstr);
 
-  active_session_t *s = ht_get(ctx->sessions_table, hostname);
+  pcap_session_t *s = ht_get(ctx->sessions_table, hostname);
   if (s == NULL) {
     printf("  CREATE SESSION --------------------, %s\n", hostname);
     s = create_session(header->ts.tv_sec, hostname);
@@ -88,8 +88,8 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
            s->last_visit);
     s->time_to_save += header->ts.tv_sec - s->last_visit;
     s->last_visit = header->ts.tv_sec;
-    active_session_t *session_copy = malloc(sizeof(active_session_t));
-    memcpy(session_copy, s, sizeof(active_session_t));
+    pcap_session_t *session_copy = malloc(sizeof(pcap_session_t));
+    memcpy(session_copy, s, sizeof(pcap_session_t));
     enqueue(ctx->q, session_copy);
     pthread_cond_signal(&ctx->condition);
     s->time_to_save = 0;
@@ -152,7 +152,7 @@ void *session_db_writer_thread(void *data) {
   while (1) {
     pthread_cond_wait(&ctx->condition, &ctx->mutex);
     while (!is_empty(ctx->q)) {
-      active_session_t *s = (active_session_t *)dequeue(ctx->q);
+      pcap_session_t *s = (pcap_session_t *)dequeue(ctx->q);
       insert_session(s, ctx->db);
     }
   }
@@ -264,19 +264,17 @@ void *pcap_runner_thread(void *data) {
 
   while (1) {
 
-    // attendre que paused == 0
     while (ctx->paused) {
-      // printf("thread wait\n");
+      printf("pcap is paused\n");
       pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
     }
-    // printf("thread is starting...\n");
-    // exécuter tant que paused == 0
+    printf("pcap is starting...\n");
     while (!ctx->paused) {
+
       pthread_mutex_unlock(&ctx->mutex2); // libérer pour pcap
       pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
       pthread_mutex_lock(&ctx->mutex2);
     }
-    // printf("paused again\n");
   }
 
   pthread_mutex_unlock(&ctx->mutex2);
@@ -386,7 +384,7 @@ SNIFFING_API get_stats_cmd(context *ctx, session_stats_t **s) {
   return rc;
 }
 
-// pcap + active_session_t
+// pcap + pcap_session_t
 
 SNIFFING_API build_ip_domain_table(ht *ip_to_domain, int domains_len,
                                    char *domains[]) {

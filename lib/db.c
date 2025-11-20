@@ -83,7 +83,7 @@ SNIFFING_API get_sessions_stats_from_db(sqlite3 *db, int *len,
 }
 
 // db
-SNIFFING_API insert_session(active_session_t *s, sqlite3 *db) {
+SNIFFING_API insert_session(pcap_session_t *s, sqlite3 *db) {
 
   const char *sql = "INSERT INTO host_stats (HOSTNAME, TOTAL_DURATION)"
                     "VALUES(?, ?) ON CONFLICT(HOSTNAME)"
