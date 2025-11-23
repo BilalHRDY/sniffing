@@ -26,14 +26,14 @@ typedef enum {
 } STATUS_CODE;
 
 typedef struct header {
-  unsigned int data_len;
+  unsigned int body_len;
   CMD_CODE cmd_code;           // 4 bytes
   STATUS_CODE response_status; // 4 bytes
 } BYTE_ALIGNED header_t;
 
 typedef struct uds_request {
   header_t header;      /* Common header of request */
-  char data[DATA_SIZE]; /* Data from client to server */
+  char body[DATA_SIZE]; /* Data from client to server */
 } BYTE_ALIGNED uds_request_t;
 
 typedef struct req_body {
@@ -50,5 +50,7 @@ STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t req_len);
 int init_client_request(char *data, uds_request_t *req);
 
 int client_send_request(int sfd, uds_request_t *req);
+int serialize_cmd(command_t *cmd, char *dest);
+void deserialize_cmd(uds_request_t *req, command_t *cmd);
 
 #endif

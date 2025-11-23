@@ -8,6 +8,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+void process_raw_cmd(char *raw_cmd, int raw_cmd_len, context *ctx) {
+
+  command_t cmd;
+  deserialize_cmd(req, &cmd);
+}
+
 /**
  * Extracts the destination IP address from a captured network packet
  * and converts it into a human-readable string.

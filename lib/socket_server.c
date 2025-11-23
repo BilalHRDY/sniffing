@@ -51,19 +51,11 @@ void process_add_hosts_to_listen_cmd(char *hostnames, context *ctx) {
 }
 
 void handle_command(uds_request_t *req, context *ctx) {
-  command_t *cmd = malloc(sizeof(command_t));
-  command_t *p;
-  char *d;
-  p = cmd;
-  d = (char *)(req->data);
-  memcpy(p, d, sizeof(int));
-  p += sizeof(int);
-  d += sizeof(int);
-  memcpy(p, d, req->header.data_len - sizeof(int));
+  command_t cmd;
+  deserialize_cmd(req, &cmd);
 
-  // cmd.code = req->data;
-  printf("req->header.cmd_code: %d\n", cmd->code);
-  switch (cmd->code) {
+  printf("req->header.cmd_code: %d\n", cmd.code);
+  switch (cmd.code) {
   case CMD_SERVER_START:
     start_pcap_cmd(ctx);
     break;
@@ -73,7 +65,7 @@ void handle_command(uds_request_t *req, context *ctx) {
   case CMD_HOSTNAME_LIST:
     break;
   case CMD_HOSTNAME_ADD:
-    process_add_hosts_to_listen_cmd(cmd->raw_args, ctx);
+    process_add_hosts_to_listen_cmd(cmd.raw_args, ctx);
     break;
   case CMD_GET_STATS: {
     session_stats_t *s;
@@ -87,12 +79,6 @@ void handle_command(uds_request_t *req, context *ctx) {
 
 // socket + command
 void handle_request(uds_request_t *req, context *ctx) {
-  // char *words[MAX_WORDS];
-  // int words_len;
-  // if (!extract_words(req->data, words, &words_len, MAX_WORDS)) {
-  //   // retourner l'erreur au client
-  //   return;
-  // };
 
   handle_command(req, ctx);
   free(req);
@@ -136,7 +122,7 @@ void *socket_server_thread(void *data) {
   }
 
   ssize_t req_len;
-  char buf[BUF_SIZE];
+  char buf[20];
   while (true) { /* Handle client connections iteratively */
 
     printf("Waiting to accept a connection...\n");
@@ -149,16 +135,22 @@ void *socket_server_thread(void *data) {
 
       if ((rc = verify_packet(buf, req_len)) != STATUS_OK) {
         res.header.response_status = rc;
-        res.header.data_len = 0;
+        res.header.body_len = 0;
       }
 
       else {
         printf("req_len: %zu\n", req_len);
         uds_request_t *req = malloc(req_len);
+
         memcpy(req, buf, req_len);
 
+        // int i = 0;
+        // while (i < 20) {
+        //   printf("buf[%d] = 0x%02X (%d)\n", i, (unsigned char)buf[i],
+        //          (unsigned char)buf[i]);
+        //   i++;
+        // };
         handle_request(req, ctx);
-        // ssize_t r = write(cfd, "ok!\0", 4);
       }
       ssize_t r = write(cfd, &res, sizeof(header_t));
     }
