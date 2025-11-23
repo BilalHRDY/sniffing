@@ -1,3 +1,5 @@
+#include "lib/command/cmd_serializer.h"
+#include "lib/utils/string.h"
 #include "uds_common.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,11 +17,75 @@ typedef struct {
   ssize_t input_length;
 } input_buffer_t;
 
-typedef struct {
-  char *verb;
-  int host_len;
-  char **hostnames;
-} command;
+void words_to_cmd(char *words[], int len, command_t **cmd) {
+  *cmd = malloc(sizeof(command_t));
+  if (*cmd == NULL) {
+    perror("words_to_cmd: malloc failed!");
+  }
+  memset(*cmd, 0, sizeof(command_t));
+
+  char *verb = words[0];
+  // TODO
+  //   typedef struct {
+  //     const char *start;
+  //     const char *stop;
+  //     const char *status;
+  // } protocol_strings_t;
+
+  // static const protocol_strings_t PROTO = {
+  //     .start = "START",
+  //     .stop = "STOP",
+  //     .status = "STATUS"
+  // };
+
+  // usage
+  // printf("%s\n", PROTO.start);
+  if (strings_equal(verb, "hostname")) {
+    // char **args = words + 2;
+    // TODO checker si il y a bien un 2*ème mot
+    if (strings_equal(words[1], "add")) {
+      int args_len = len - 2;
+      (*cmd)->code = CMD_HOSTNAME_ADD;
+      (*cmd)->raw_args = string_list_to_string(words + 2, args_len);
+    } else if (strings_equal(words[1], "list")) {
+      (*cmd)->code = CMD_HOSTNAME_LIST;
+    }
+
+  } else if (strings_equal(verb, "server")) {
+    if (strings_equal(words[1], "start")) {
+      (*cmd)->code = CMD_SERVER_START;
+
+    } else if (strings_equal(words[1], "stop")) {
+      (*cmd)->code = CMD_SERVER_STOP;
+    }
+  } else if (strings_equal(verb, "stats")) {
+    (*cmd)->code = CMD_GET_STATS;
+
+  } else {
+    (*cmd)->code = CMD_NOT_KNOWN;
+  }
+}
+
+int user_input_to_cmd(char *data, command_t **cmd) {
+  char *words[MAX_WORDS];
+  int words_len;
+  if (!extract_words(data, words, &words_len, MAX_WORDS)) {
+    fprintf(stderr, "Error while extract words from input\n");
+    return -1;
+  };
+  words_to_cmd(words, words_len, cmd);
+  return 0;
+}
+
+int init_client_request(char *input, uds_request_t *req) {
+
+  command_t *cmd;
+  user_input_to_cmd(input, &cmd);
+
+  req->header.body_len = serialize_cmd(cmd, req->body);
+  printf(" req->header.body_len: %d\n", req->header.body_len);
+  return 1;
+}
 
 input_buffer_t new_input_buffer() {
   input_buffer_t input_buf;
@@ -93,7 +159,7 @@ int main(int argc, char *argv[]) {
   exit(EXIT_SUCCESS);
 }
 
-// command *build_command(char *words[], int len) {
+// command *user_input_to_cmd(char *words[], int len) {
 //   command *cmd = malloc(sizeof(command));
 
 //   if (strcmp(words[0], "quit") == 0) {
@@ -142,6 +208,6 @@ int main(int argc, char *argv[]) {
 // char *handle_input(input_buffer_t *input_buf) {
 //   char *words[5];
 //   int word_count = extract_words(input_buf, words);
-//   command *cmd = build_command(words, word_count);
+//   command *cmd = user_input_to_cmd(words, word_count);
 //   return serialize_command(cmd);
 // }

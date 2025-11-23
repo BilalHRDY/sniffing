@@ -9,12 +9,6 @@
 #include <string.h>
 #include <unistd.h>
 
-void process_raw_cmd(char *raw_cmd, int raw_cmd_len, context *ctx) {
-
-  command_t cmd;
-  deserialize_cmd(req, &cmd);
-}
-
 /**
  * Extracts the destination IP address from a captured network packet
  * and converts it into a human-readable string.
@@ -290,7 +284,7 @@ void *pcap_runner_thread(void *data) {
 }
 
 // PCAP + cache + filter
-SNIFFING_API add_hosts_to_listen_cmd(char *domains[], int len, context *ctx) {
+SNIFFING_API add_hosts_to_listen(char *domains[], int len, context *ctx) {
   ht *ip_to_domain = ctx->domain_cache->ip_to_domain;
   SNIFFING_API rc;
   char *filter;
@@ -301,34 +295,39 @@ SNIFFING_API add_hosts_to_listen_cmd(char *domains[], int len, context *ctx) {
 
   if ((rc = build_filter_from_ip_to_domain(ip_to_domain, &filter)) !=
       SNIFFING_OK) {
+    free(filter);
     return rc;
   }
 
   if (pcap_compile(ctx->handle, ctx->bpf, filter, 1, *(ctx->mask))) {
+    free(filter);
     fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(ctx->handle));
     return SNIFFING_INTERNAL_ERROR;
   }
 
   if (pcap_setfilter(ctx->handle, ctx->bpf) == -1) {
+    free(filter);
     fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(ctx->handle));
     return SNIFFING_INTERNAL_ERROR;
   }
+  // TODO  free(filter) ?
   return SNIFFING_OK;
 };
 
 // PCAP + DB
-SNIFFING_API start_pcap_cmd(context *ctx) {
+SNIFFING_API start_pcap_with_db_check(context *ctx) {
 
   char **hostnames = NULL;
   int len;
   SNIFFING_API rc;
 
+  // TODO faire une fonction pour juste renvoyer le nombre de host en table
   if ((rc = get_hostnames_from_db(ctx->db, &len, &hostnames)) != SNIFFING_OK) {
     return rc;
   };
 
   if (!len) {
-    fprintf(stderr, "start_pcap_cmd : no hostname in db!\n");
+    fprintf(stderr, "start_pcap : no hostname in db!\n");
     return SNIFFING_NO_HOSTNAME_IN_DB;
   }
 
@@ -360,7 +359,7 @@ SNIFFING_API start_pcap(context *ctx) {
 }
 
 // PCAP
-SNIFFING_API stop_pcap_cmd(context *ctx) {
+SNIFFING_API stop_pcap(context *ctx) {
   // printf("stop lock\n");
   pthread_mutex_lock(&ctx->mutex2);
   // printf("stop in lock\n");
@@ -374,8 +373,8 @@ SNIFFING_API stop_pcap_cmd(context *ctx) {
 }
 
 // DB + session_stats_t
-SNIFFING_API get_stats_cmd(context *ctx, session_stats_t **s) {
-  printf("get_stats_cmd\n");
+SNIFFING_API get_stats(context *ctx, session_stats_t **s) {
+  printf("get_stats\n");
   int len = 0;
   SNIFFING_API rc;
 

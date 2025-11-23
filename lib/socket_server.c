@@ -1,7 +1,6 @@
 #include "../uds_common.h"
 #include "./sniffing.h"
-#include "utils/string.h"
-#include <arpa/inet.h>
+#include "command/cmd_handler.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,74 +12,9 @@
 #define SV_SOCK_PATH "tmp/sniffing_socket"
 #define BACKLOG 3
 
-// command
-// void handle_command(uds_request_t *req, context *ctx) {
-//   // printf("strlen(words[0]): %zu\n", strlen(words[0]));
-//   char *verb = words[0];
-//   if (strcmp(verb, "hostname") == 0) {
-//     char **args = words + 2;
-//     int args_len = len - 2;
-//     // TODO checker si il y a bien un 2ème mot
-//     if (strcmp(words[1], "add") == 0) {
-
-//       add_hosts_to_listen_cmd(args, args_len, ctx);
-//     } else if (strcmp(words[1], "list") == 0) {
-//       // get_hosts_to_listen(ctx->domain_cache->ip_to_domain);
-//     }
-
-//   } else if (strcmp(verb, "server") == 0) {
-//     if (strcmp(words[1], "start") == 0) {
-//       start_pcap_cmd(ctx);
-//     } else if (strcmp(words[1], "stop") == 0) {
-//       stop_pcap_cmd(ctx);
-//     }
-//   } else if (strcmp(verb, "stats") == 0) {
-//     session_stats_t *s;
-
-//     get_stats_cmd(ctx, &s);
-
-//   } else {
-//     fprintf(stderr, "Command not known!\n");
-//   }
-// }
-void process_add_hosts_to_listen_cmd(char *hostnames, context *ctx) {
-  char *words[MAX_WORDS];
-  int words_len;
-  extract_words(hostnames, words, &words_len, MAX_WORDS);
-  add_hosts_to_listen_cmd(words, words_len, ctx);
-}
-
-void handle_command(uds_request_t *req, context *ctx) {
-  command_t cmd;
-  deserialize_cmd(req, &cmd);
-
-  printf("req->header.cmd_code: %d\n", cmd.code);
-  switch (cmd.code) {
-  case CMD_SERVER_START:
-    start_pcap_cmd(ctx);
-    break;
-  case CMD_SERVER_STOP:
-    stop_pcap_cmd(ctx);
-    break;
-  case CMD_HOSTNAME_LIST:
-    break;
-  case CMD_HOSTNAME_ADD:
-    process_add_hosts_to_listen_cmd(cmd.raw_args, ctx);
-    break;
-  case CMD_GET_STATS: {
-    session_stats_t *s;
-    get_stats_cmd(ctx, &s);
-  } break;
-  default:
-    fprintf(stderr, "Command not known!\n");
-    break;
-  }
-}
-
 // socket + command
 void handle_request(uds_request_t *req, context *ctx) {
-
-  handle_command(req, ctx);
+  process_raw_cmd(req->body, req->header.body_len, ctx);
   free(req);
 };
 
@@ -122,7 +56,7 @@ void *socket_server_thread(void *data) {
   }
 
   ssize_t req_len;
-  char buf[20];
+  char buf[BUF_SIZE];
   while (true) { /* Handle client connections iteratively */
 
     printf("Waiting to accept a connection...\n");

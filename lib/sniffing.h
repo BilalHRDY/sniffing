@@ -52,11 +52,11 @@ typedef struct context {
 } context;
 
 SNIFFING_API init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);
-SNIFFING_API add_hosts_to_listen_cmd(char *domains[], int len, context *ctx);
-SNIFFING_API start_pcap_cmd(context *ctx);
+SNIFFING_API add_hosts_to_listen(char *domains[], int len, context *ctx);
 SNIFFING_API start_pcap(context *ctx);
-SNIFFING_API stop_pcap_cmd(context *ctx);
-SNIFFING_API get_stats_cmd(context *ctx, session_stats_t **s);
+SNIFFING_API start_pcap_with_db_check(context *ctx);
+SNIFFING_API stop_pcap(context *ctx);
+SNIFFING_API get_stats(context *ctx, session_stats_t **s);
 
 void *session_db_writer_thread(void *data);
 void *pcap_runner_thread(void *data);
