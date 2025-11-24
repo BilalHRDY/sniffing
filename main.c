@@ -24,7 +24,7 @@ int main() {
   pthread_t server_thread;
   pthread_t pcap_thread;
 
-  context *ctx = malloc(sizeof(context));
+  context_t *ctx = malloc(sizeof(context_t));
   if (ctx == NULL) {
     fprintf(stderr, "malloc error for ctx!\n");
     exit(EXIT_FAILURE);

@@ -1,6 +1,7 @@
 #include "./sniffing.h"
 #include "./db.h"
 #include "./ip.h"
+#include "types.h"
 #include "utils/hashmap.h"
 #include "utils/string.h"
 #include <pthread.h>
@@ -55,7 +56,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
 
   char ipstr[INET6_ADDRSTRLEN];
   int version = packet[14] >> 4;
-  context *ctx = (context *)user;
+  context_t *ctx = (context_t *)user;
 
   get_dst_ip_string_from_packets(packet, ipstr, version);
   char *hostname = ht_get(ctx->domain_cache->ip_to_domain, ipstr);
@@ -148,7 +149,7 @@ SNIFFING_API build_filter_from_ip_to_domain(ht *ip_to_domain, char **filter) {
 void *session_db_writer_thread(void *data) {
   printf("------------------ session_db_writer ------------------ \n");
 
-  context *ctx = (context *)data;
+  context_t *ctx = (context_t *)data;
   printf("is_empty: %d\n", is_empty(ctx->q));
   while (1) {
     pthread_cond_wait(&ctx->condition, &ctx->mutex);
@@ -221,7 +222,7 @@ SNIFFING_API update_ip_domain_table(ht *ip_to_domain, int domains_len,
 
 // PCAP + cache + filter
 void *pcap_runner_thread(void *data) {
-  context *ctx = (context *)data;
+  context_t *ctx = (context_t *)data;
 
   struct bpf_program fp;
   ctx->bpf = &fp;
@@ -284,7 +285,7 @@ void *pcap_runner_thread(void *data) {
 }
 
 // PCAP + cache + filter
-SNIFFING_API add_hosts_to_listen(char *domains[], int len, context *ctx) {
+SNIFFING_API add_hosts_to_listen(char *domains[], int len, context_t *ctx) {
   ht *ip_to_domain = ctx->domain_cache->ip_to_domain;
   SNIFFING_API rc;
   char *filter;
@@ -315,7 +316,7 @@ SNIFFING_API add_hosts_to_listen(char *domains[], int len, context *ctx) {
 };
 
 // PCAP + DB
-SNIFFING_API start_pcap_with_db_check(context *ctx) {
+SNIFFING_API start_pcap_with_db_check(context_t *ctx) {
 
   char **hostnames = NULL;
   int len;
@@ -339,11 +340,11 @@ SNIFFING_API start_pcap_with_db_check(context *ctx) {
   return SNIFFING_OK;
 }
 
-// void start_pcap(context *ctx) {
+// void start_pcap(context_t *ctx) {
 //   ctx->paused = 0;
 //   pthread_cond_signal(&ctx->condition2);
 // }
-SNIFFING_API start_pcap(context *ctx) {
+SNIFFING_API start_pcap(context_t *ctx) {
   // printf("start lock\n");
   pthread_mutex_lock(&ctx->mutex2);
   // printf("start in lock\n");
@@ -359,7 +360,7 @@ SNIFFING_API start_pcap(context *ctx) {
 }
 
 // PCAP
-SNIFFING_API stop_pcap(context *ctx) {
+SNIFFING_API stop_pcap(context_t *ctx) {
   // printf("stop lock\n");
   pthread_mutex_lock(&ctx->mutex2);
   // printf("stop in lock\n");
@@ -373,7 +374,7 @@ SNIFFING_API stop_pcap(context *ctx) {
 }
 
 // DB + session_stats_t
-SNIFFING_API get_stats(context *ctx, session_stats_t **s) {
+SNIFFING_API get_stats(context_t *ctx, session_stats_t **s) {
   printf("get_stats\n");
   int len = 0;
   SNIFFING_API rc;

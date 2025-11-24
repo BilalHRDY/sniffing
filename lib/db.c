@@ -1,4 +1,5 @@
 #include "./sniffing.h"
+#include "types.h"
 #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>

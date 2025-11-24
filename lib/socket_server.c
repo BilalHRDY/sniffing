@@ -1,6 +1,7 @@
 #include "../uds_common.h"
-#include "./sniffing.h"
+#include "request_handler.h"
 #include <errno.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -11,9 +12,57 @@
 #define SV_SOCK_PATH "tmp/sniffing_socket"
 #define BACKLOG 3
 
+// launch_server(){};
+typedef struct server_config {
+  int sfd;
+  request_handler_t request_handler;
+  opaque_ctx_t *ctx;
+} server_config_t;
+
 // socket + command
 void *socket_server_thread(void *data) {
-  context *ctx = data;
+  server_config_t *server_config = (server_config_t *)data;
+
+  ssize_t req_len;
+  char buf[BUF_SIZE];
+  while (true) { /* Handle client connections iteratively */
+
+    printf("Waiting to accept a connection...\n");
+    int cfd = accept(server_config->sfd, NULL, NULL);
+    printf("Accepted socket fd = %d\n", cfd);
+
+    while ((req_len = read(cfd, buf, sizeof(buf))) > 0) {
+      uds_request_t res;
+      STATUS_CODE rc;
+
+      if ((rc = verify_packet(buf, req_len)) != STATUS_OK) {
+        res.header.response_status = rc;
+        res.header.body_len = 0;
+      }
+
+      else {
+        printf("req_len: %zu\n", req_len);
+        uds_request_t *req = malloc(req_len);
+
+        memcpy(req, buf, req_len);
+        server_config->request_handler(req->body, req->header.body_len,
+                                       server_config->ctx);
+        free(req);
+      }
+      ssize_t r = write(cfd, &res, sizeof(header_t));
+    }
+    if (req_len == -1) {
+      perror("Error reading from socket");
+    }
+    if (req_len == 0) {
+      printf("client has closed the connection\n");
+    }
+
+    close(cfd);
+  };
+}
+
+int init_server(request_handler_t request_handler) {
   struct sockaddr_un addr;
 
   int sfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -48,45 +97,19 @@ void *socket_server_thread(void *data) {
     exit(EXIT_FAILURE);
   }
 
-  ssize_t req_len;
-  char buf[BUF_SIZE];
-  while (true) { /* Handle client connections iteratively */
+  pthread_t server_thread;
 
-    printf("Waiting to accept a connection...\n");
-    int cfd = accept(sfd, NULL, NULL);
-    printf("Accepted socket fd = %d\n", cfd);
+  int server_thread_res =
+      pthread_create(&server_thread, NULL, socket_server_thread, &sfd);
 
-    while ((req_len = read(cfd, buf, sizeof(buf))) > 0) {
-      uds_request_t res;
-      STATUS_CODE rc;
-
-      if ((rc = verify_packet(buf, req_len)) != STATUS_OK) {
-        res.header.response_status = rc;
-        res.header.body_len = 0;
-      }
-
-      else {
-        printf("req_len: %zu\n", req_len);
-        uds_request_t *req = malloc(req_len);
-
-        memcpy(req, buf, req_len);
-        ctx->request_handler(req->body, req->header.body_len, ctx);
-        free(req);
-      }
-      ssize_t r = write(cfd, &res, sizeof(header_t));
-    }
-    if (req_len == -1) {
-      perror("Error reading from socket");
-    }
-    if (req_len == 0) {
-      printf("client has closed the connection\n");
-    }
-
-    close(cfd);
+  if (server_thread_res) {
+    fprintf(stderr, "error while creating server thread!\n");
+    exit(EXIT_FAILURE);
   }
+  pthread_join(server_thread, NULL);
+};
 
-  // build_response(session_stats_t * sessions_stats[], int len) {
-  //   header_t header;
-  //   uds_request_t res;
-  // }
-}
+// build_response(session_stats_t * sessions_stats[], int len) {
+//   header_t header;
+//   uds_request_t res;
+// }

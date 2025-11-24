@@ -1,6 +1,7 @@
 #ifndef DB_H
 #define DB_H
 #include "./sniffing.h"
+#include "types.h"
 
 SNIFFING_API init_db(sqlite3 **db);
 SNIFFING_API get_hostnames_from_db(sqlite3 *db, int *len, char ***hostnames);
