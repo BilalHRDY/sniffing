@@ -36,3 +36,8 @@ void process_raw_cmd(char *raw_cmd, int raw_cmd_len, context *ctx) {
     break;
   }
 }
+
+// socket + command
+void handle_request(char *data, int data_len, context *ctx) {
+  process_raw_cmd(data, data_len, ctx);
+};

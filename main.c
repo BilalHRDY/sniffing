@@ -1,3 +1,4 @@
+#include "lib/command/cmd_handler.h"
 #include "lib/db.h"
 #include "lib/sniffing.h"
 #include "lib/socket_server.h"
@@ -60,6 +61,7 @@ int main() {
   // ctx->has_hostnames_to_listen = (ip_to_domain->count > 0);
 
   init_ip_to_domain_from_db(ip_to_domain, db);
+  ctx->request_handler = handle_request;
   ctx->paused = 1;
   printf("ctx->paused: %d\n", ctx->paused);
 

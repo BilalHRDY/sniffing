@@ -49,6 +49,7 @@ typedef struct context {
   domain_cache_t *domain_cache;
   ht *sessions_table;
   queue *q;
+  void (*request_handler)(char *data, int data_len, struct context *ctx);
 } context;
 
 SNIFFING_API init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);

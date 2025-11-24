@@ -1,6 +1,5 @@
 #include "../uds_common.h"
 #include "./sniffing.h"
-#include "command/cmd_handler.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,12 +10,6 @@
 
 #define SV_SOCK_PATH "tmp/sniffing_socket"
 #define BACKLOG 3
-
-// socket + command
-void handle_request(uds_request_t *req, context *ctx) {
-  process_raw_cmd(req->body, req->header.body_len, ctx);
-  free(req);
-};
 
 // socket + command
 void *socket_server_thread(void *data) {
@@ -77,14 +70,8 @@ void *socket_server_thread(void *data) {
         uds_request_t *req = malloc(req_len);
 
         memcpy(req, buf, req_len);
-
-        // int i = 0;
-        // while (i < 20) {
-        //   printf("buf[%d] = 0x%02X (%d)\n", i, (unsigned char)buf[i],
-        //          (unsigned char)buf[i]);
-        //   i++;
-        // };
-        handle_request(req, ctx);
+        ctx->request_handler(req->body, req->header.body_len, ctx);
+        free(req);
       }
       ssize_t r = write(cfd, &res, sizeof(header_t));
     }
