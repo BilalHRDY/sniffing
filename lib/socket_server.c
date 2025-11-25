@@ -1,5 +1,6 @@
-#include "../uds_common.h"
-#include "request_handler.h"
+
+// #include "request_handler.h"
+#include "socket_server.h"
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -16,19 +17,25 @@
 typedef struct server_config {
   int sfd;
   request_handler_t request_handler;
-  opaque_ctx_t *ctx;
+  context_t *ctx;
 } server_config_t;
 
 // socket + command
 void *socket_server_thread(void *data) {
-  server_config_t *server_config = (server_config_t *)data;
+  server_config_t *cfg = (server_config_t *)data;
+
+  int sfd = cfg->sfd;
+  request_handler_t handler = cfg->request_handler;
+  context_t *ctx = cfg->ctx;
+
+  free(cfg);
 
   ssize_t req_len;
   char buf[BUF_SIZE];
   while (true) { /* Handle client connections iteratively */
 
     printf("Waiting to accept a connection...\n");
-    int cfd = accept(server_config->sfd, NULL, NULL);
+    int cfd = accept(sfd, NULL, NULL);
     printf("Accepted socket fd = %d\n", cfd);
 
     while ((req_len = read(cfd, buf, sizeof(buf))) > 0) {
@@ -45,11 +52,10 @@ void *socket_server_thread(void *data) {
         uds_request_t *req = malloc(req_len);
 
         memcpy(req, buf, req_len);
-        server_config->request_handler(req->body, req->header.body_len,
-                                       server_config->ctx);
+        handler(req, ctx);
         free(req);
       }
-      ssize_t r = write(cfd, &res, sizeof(header_t));
+      // ssize_t r = write(cfd, &res, sizeof(header_t));
     }
     if (req_len == -1) {
       perror("Error reading from socket");
@@ -62,7 +68,7 @@ void *socket_server_thread(void *data) {
   };
 }
 
-int init_server(request_handler_t request_handler) {
+pthread_t *init_server(request_handler_t request_handler, context_t *ctx) {
   struct sockaddr_un addr;
 
   int sfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -97,16 +103,20 @@ int init_server(request_handler_t request_handler) {
     exit(EXIT_FAILURE);
   }
 
-  pthread_t server_thread;
+  server_config_t *cfg = malloc(sizeof(*cfg));
+  *cfg = (server_config_t){
+      .sfd = sfd, .request_handler = request_handler, .ctx = ctx};
+
+  pthread_t *server_thread = malloc(sizeof(pthread_t));
 
   int server_thread_res =
-      pthread_create(&server_thread, NULL, socket_server_thread, &sfd);
+      pthread_create(server_thread, NULL, socket_server_thread, cfg);
 
   if (server_thread_res) {
     fprintf(stderr, "error while creating server thread!\n");
     exit(EXIT_FAILURE);
   }
-  pthread_join(server_thread, NULL);
+  return server_thread;
 };
 
 // build_response(session_stats_t * sessions_stats[], int len) {

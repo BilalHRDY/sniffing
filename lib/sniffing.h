@@ -18,6 +18,6 @@ typedef enum {
 
 } SNIFFING_API;
 
-typedef struct opaque_ctx opaque_ctx_t;
+typedef struct context context_t;
 
 #endif

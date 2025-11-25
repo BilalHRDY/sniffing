@@ -340,10 +340,6 @@ SNIFFING_API start_pcap_with_db_check(context_t *ctx) {
   return SNIFFING_OK;
 }
 
-// void start_pcap(context_t *ctx) {
-//   ctx->paused = 0;
-//   pthread_cond_signal(&ctx->condition2);
-// }
 SNIFFING_API start_pcap(context_t *ctx) {
   // printf("start lock\n");
   pthread_mutex_lock(&ctx->mutex2);

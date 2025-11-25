@@ -1,5 +1,5 @@
-#include "lib/command/cmd_handler.h"
 #include "lib/db.h"
+#include "lib/request_handler.h"
 #include "lib/sniffing.h"
 #include "lib/socket_server.h"
 #include <arpa/inet.h>
@@ -14,14 +14,11 @@
 
 int main() {
   sqlite3 *db;
-  char *database_name = "sniffing.db";
   char *errmsg;
   int rc;
   const char *sql;
   int db_writer_thread_res;
-  int server_thread_res;
   pthread_t db_writer_thread;
-  pthread_t server_thread;
   pthread_t pcap_thread;
 
   context_t *ctx = malloc(sizeof(context_t));
@@ -45,8 +42,8 @@ int main() {
     fprintf(stderr, "error while creating threads!\n");
     exit(EXIT_FAILURE);
   }
-  server_thread_res =
-      pthread_create(&server_thread, NULL, socket_server_thread, ctx);
+  // server_thread_res =
+  //     pthread_create(&server_thread, NULL, socket_server_thread, ctx);
 
   domain_cache_t cache;
   ht *ip_to_domain = ht_create();
@@ -61,14 +58,15 @@ int main() {
   // ctx->has_hostnames_to_listen = (ip_to_domain->count > 0);
 
   init_ip_to_domain_from_db(ip_to_domain, db);
-  ctx->request_handler = handle_request;
-  ctx->paused = 1;
+  ctx->paused = 0;
   printf("ctx->paused: %d\n", ctx->paused);
+
+  pthread_t *server_thread = init_server(request_handler, ctx);
 
   int pcap_thread_res =
       pthread_create(&pcap_thread, NULL, pcap_runner_thread, ctx);
 
-  if (server_thread_res | pcap_thread_res) {
+  if (pcap_thread_res) {
     fprintf(stderr, "error while creating threads!\n");
     exit(EXIT_FAILURE);
   }
@@ -79,7 +77,8 @@ int main() {
 
   // Bloquant
   pthread_join(db_writer_thread, NULL);
-  pthread_join(server_thread, NULL);
+  pthread_join(*server_thread, NULL);
+  free(server_thread);
   pthread_join(pcap_thread, NULL);
 
   pthread_mutex_destroy(&ctx->mutex);

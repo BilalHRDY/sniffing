@@ -1,5 +1,5 @@
 #include "hashmap.h"
-#include "../sniffing.h"
+#include "../types.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

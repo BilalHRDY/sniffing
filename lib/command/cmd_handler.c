@@ -40,8 +40,3 @@ void process_raw_cmd(char *raw_cmd, int raw_cmd_len, context_t *ctx) {
 
   process_cmd(&cmd, ctx);
 }
-
-// socket + command
-void handle_request(char *data, int data_len, context_t *ctx) {
-  process_raw_cmd(data, data_len, ctx);
-};
