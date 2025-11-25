@@ -1,5 +1,3 @@
-
-// #include "request_handler.h"
 #include "socket_server.h"
 #include <errno.h>
 #include <pthread.h>
@@ -13,20 +11,18 @@
 #define SV_SOCK_PATH "tmp/sniffing_socket"
 #define BACKLOG 3
 
-// launch_server(){};
-typedef struct server_config {
+typedef struct thread_config {
   int sfd;
-  request_handler_t request_handler;
-  context_t *ctx;
-} server_config_t;
+  server_args_t *server_args;
+} thread_config_t;
 
 // socket + command
 void *socket_server_thread(void *data) {
-  server_config_t *cfg = (server_config_t *)data;
+  thread_config_t *cfg = (thread_config_t *)data;
 
   int sfd = cfg->sfd;
-  request_handler_t handler = cfg->request_handler;
-  context_t *ctx = cfg->ctx;
+  request_handler_t handler = cfg->server_args->request_handler;
+  unsigned char *user_data = cfg->server_args->user_data;
 
   free(cfg);
 
@@ -52,7 +48,7 @@ void *socket_server_thread(void *data) {
         uds_request_t *req = malloc(req_len);
 
         memcpy(req, buf, req_len);
-        handler(req, ctx);
+        handler(req, user_data);
         free(req);
       }
       // ssize_t r = write(cfd, &res, sizeof(header_t));
@@ -68,7 +64,7 @@ void *socket_server_thread(void *data) {
   };
 }
 
-pthread_t *init_server(request_handler_t request_handler, context_t *ctx) {
+pthread_t *init_server(server_args_t *server_args) {
   struct sockaddr_un addr;
 
   int sfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -103,14 +99,13 @@ pthread_t *init_server(request_handler_t request_handler, context_t *ctx) {
     exit(EXIT_FAILURE);
   }
 
-  server_config_t *cfg = malloc(sizeof(*cfg));
-  *cfg = (server_config_t){
-      .sfd = sfd, .request_handler = request_handler, .ctx = ctx};
-
   pthread_t *server_thread = malloc(sizeof(pthread_t));
 
+  thread_config_t *thread_config = malloc(sizeof(thread_config_t));
+  *thread_config = (thread_config_t){.sfd = sfd, server_args = server_args};
+
   int server_thread_res =
-      pthread_create(server_thread, NULL, socket_server_thread, cfg);
+      pthread_create(server_thread, NULL, socket_server_thread, thread_config);
 
   if (server_thread_res) {
     fprintf(stderr, "error while creating server thread!\n");

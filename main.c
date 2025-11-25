@@ -61,7 +61,10 @@ int main() {
   ctx->paused = 0;
   printf("ctx->paused: %d\n", ctx->paused);
 
-  pthread_t *server_thread = init_server(request_handler, ctx);
+  server_args_t server_args = {.request_handler = request_handler,
+                               .user_data = (unsigned char *)ctx};
+
+  pthread_t *server_thread = init_server(&server_args);
 
   int pcap_thread_res =
       pthread_create(&pcap_thread, NULL, pcap_runner_thread, ctx);
