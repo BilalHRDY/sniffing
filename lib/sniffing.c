@@ -370,19 +370,19 @@ SNIFFING_API stop_pcap(context_t *ctx) {
 }
 
 // DB + session_stats_t
-SNIFFING_API get_stats(context_t *ctx, session_stats_t **s) {
+SNIFFING_API get_stats(context_t *ctx, session_stats_t **s, int *s_len) {
   printf("get_stats\n");
   int len = 0;
   SNIFFING_API rc;
 
-  // *s = malloc(sizeof(session_stats_t));
   rc = get_sessions_stats_from_db(ctx->db, &len, s);
   if (rc != SNIFFING_OK) {
-    free(s);
+    return rc;
   }
+  *s_len = len;
   for (size_t i = 0; i < len; i++) {
-    printf("s[i]: hostname:  %s\n", (*s[i]).hostname);
-    printf("s[i]: total_duration:  %d\n", (*s[i]).total_duration);
+    printf("s[i]: hostname:  %s\n", (*s)[i].hostname);
+    printf("s[i]: total_duration:  %d\n", (*s)[i].total_duration);
   }
   return rc;
 }

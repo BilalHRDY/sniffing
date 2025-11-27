@@ -1,6 +1,7 @@
 #include "socket_server.h"
 #include <errno.h>
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -18,17 +19,17 @@ typedef struct thread_config {
 
 // socket + command
 void *socket_server_thread(void *data) {
-  thread_config_t *cfg = (thread_config_t *)data;
+  thread_config_t *thread_config = (thread_config_t *)data;
 
-  int sfd = cfg->sfd;
-  request_handler_t handler = cfg->server_args->request_handler;
-  unsigned char *user_data = cfg->server_args->user_data;
+  int sfd = thread_config->sfd;
+  request_handler_t handler = thread_config->server_args->request_handler;
+  unsigned char *user_data = thread_config->server_args->user_data;
 
-  free(cfg);
+  free(thread_config);
 
   ssize_t req_len;
   char buf[BUF_SIZE];
-  while (true) { /* Handle client connections iteratively */
+  while (1) { /* Handle client connections iteratively */
 
     printf("Waiting to accept a connection...\n");
     int cfd = accept(sfd, NULL, NULL);
@@ -48,10 +49,11 @@ void *socket_server_thread(void *data) {
         uds_request_t *req = malloc(req_len);
 
         memcpy(req, buf, req_len);
-        handler(req, user_data);
+        handler(req, &res, user_data);
         free(req);
       }
-      // ssize_t r = write(cfd, &res, sizeof(header_t));
+      ssize_t r = write(cfd, &res, sizeof(header_t) + res.header.body_len);
+      printf("r: %lu\n", r);
     }
     if (req_len == -1) {
       perror("Error reading from socket");

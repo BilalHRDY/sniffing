@@ -22,8 +22,9 @@ int client_send_request(int sfd, uds_request_t *req) {
   if (count == -1) {
     return 0;
   }
-
+  printf("res count: %lu\n", count);
   printf("res: %s\n", buf);
+
   return 1;
 }
 

@@ -48,6 +48,6 @@ SNIFFING_API add_hosts_to_listen(char *domains[], int len, context_t *ctx);
 SNIFFING_API start_pcap(context_t *ctx);
 SNIFFING_API start_pcap_with_db_check(context_t *ctx);
 SNIFFING_API stop_pcap(context_t *ctx);
-SNIFFING_API get_stats(context_t *ctx, session_stats_t **s);
+SNIFFING_API get_stats(context_t *ctx, session_stats_t **s, int *s_len);
 
 #endif

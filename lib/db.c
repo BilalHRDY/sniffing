@@ -67,7 +67,6 @@ SNIFFING_API get_sessions_stats_from_db(sqlite3 *db, int *len,
             sqlite3_errmsg(db));
     return SNIFFING_INTERNAL_ERROR;
   }
-
   while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
     *sessions_stats =
         realloc(*sessions_stats, ((*len) + 1) * sizeof(session_stats_t));
@@ -75,6 +74,7 @@ SNIFFING_API get_sessions_stats_from_db(sqlite3 *db, int *len,
       perror("get_sessions_stats_from_db: realloc failed");
       return SNIFFING_INTERNAL_ERROR;
     }
+
     (*sessions_stats)[(*len)].hostname =
         strdup((const char *)sqlite3_column_text(stmt, 0));
     (*sessions_stats)[(*len)].total_duration = sqlite3_column_int(stmt, 1);

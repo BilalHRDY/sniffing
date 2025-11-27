@@ -4,6 +4,7 @@
 #include "../sniffing.h"
 #include "cmd.h"
 
-void process_raw_cmd(char *raw_cmd, int raw_cmd_len, context_t *ctx);
+void process_raw_cmd(char *raw_cmd, int raw_cmd_len, char (*res)[DATA_SIZE],
+                     unsigned *res_len, context_t *ctx);
 
 #endif

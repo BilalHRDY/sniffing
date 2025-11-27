@@ -4,8 +4,6 @@
 
 #define BYTE_ALIGNED __attribute__((packed))
 
-// #define STATUS_SUCCESS 0
-// #define STATUS_ERROR 1
 #define BUF_SIZE 1024
 #define DATA_SIZE 256
 
@@ -17,12 +15,12 @@ typedef enum {
 
 typedef struct header {
   unsigned int body_len;
-  STATUS_CODE response_status; // 4 bytes
+  STATUS_CODE response_status;
 } BYTE_ALIGNED header_t;
 
 typedef struct uds_request {
-  header_t header;      /* Common header of request */
-  char body[DATA_SIZE]; /* Data from client to server */
+  header_t header;
+  char body[DATA_SIZE];
 } BYTE_ALIGNED uds_request_t;
 
 STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t req_len);

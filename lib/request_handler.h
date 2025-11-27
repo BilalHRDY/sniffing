@@ -4,6 +4,7 @@
 #include "../uds_common.h"
 #include "sniffing.h"
 
-void request_handler(uds_request_t *req, unsigned char *ctx);
+void request_handler(uds_request_t *req, uds_request_t *res,
+                     unsigned char *ctx);
 
 #endif
