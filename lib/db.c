@@ -77,6 +77,8 @@ SNIFFING_API get_sessions_stats_from_db(sqlite3 *db, int *len,
 
     (*sessions_stats)[(*len)].hostname =
         strdup((const char *)sqlite3_column_text(stmt, 0));
+    (*sessions_stats)[(*len)].hostname_len =
+        strlen((*sessions_stats)[(*len)].hostname);
     (*sessions_stats)[(*len)].total_duration = sqlite3_column_int(stmt, 1);
     (*len)++;
   }
