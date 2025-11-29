@@ -44,7 +44,6 @@ int has_null_terminator(const char *s) {
   int i = 0;
   while (1) {
     if (s[i] == '\0') {
-      printf("has_null_terminator!\n");
       return 1;
     }
     i++;

@@ -53,7 +53,7 @@ void *socket_server_thread(void *data) {
         free(req);
       }
       ssize_t r = write(cfd, &res, sizeof(header_t) + res.header.body_len);
-      printf("r: %lu\n", r);
+      printf("response to client length: %lu\n", r);
     }
     if (req_len == -1) {
       perror("Error reading from socket");

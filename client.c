@@ -136,6 +136,7 @@ int main(int argc, char *argv[]) {
 
   while (1) {
     printf("sniffing> ");
+    // TODO : bug si on écrit très vite dans le terminal au lancement du client
     read_input(&input_buf);
 
     if (input_buf.input_length == 0) {
@@ -149,7 +150,7 @@ int main(int argc, char *argv[]) {
     uds_request_t req;
     init_client_request(input_buf.buffer, &req);
 
-    if (!client_send_request(sfd, &req)) {
+    if (client_send_request(sfd, &req)) {
       continue;
     }
 

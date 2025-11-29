@@ -46,7 +46,7 @@ SNIFFING_API get_hostnames_from_db(sqlite3 *db, int *len, char ***hostnames) {
   while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
     *hostnames = realloc(*hostnames, ((*len) + 1) * sizeof(char *));
     if (!hostnames) {
-      perror("get_hostnames_from_db: realloc");
+      perror("get_hostnames_from_db: realloc failed");
       return SNIFFING_INTERNAL_ERROR;
     }
     (*hostnames)[(*len)++] = strdup((const char *)sqlite3_column_text(stmt, 0));

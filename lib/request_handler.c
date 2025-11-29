@@ -7,4 +7,5 @@ void request_handler(uds_request_t *req, uds_request_t *res,
                   (context_t *)user_data);
   res->header.response_status = STATUS_OK;
   res->header.body_len = body_len;
+  printf("body_len of response: %d\n", body_len);
 };
