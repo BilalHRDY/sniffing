@@ -6,26 +6,37 @@
 #include <string.h>
 #include <unistd.h>
 
-void deserialize_sessions(char *raw_sessions, int raw_sessions_len) {
+typedef struct session_store {
+  int sessions_len;
+  session_stats_t **sessions;
+
+} session_store_t;
+
+void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
+                          session_store_t **st) {
   printf("body len: %d\n", raw_sessions_len);
 
   int i = 0;
-  int num = 0;
+  // int num = 0;
   if (raw_sessions_len <= 0) {
     return;
   }
-  char *p = raw_sessions;
-  session_stats_t **sessions = NULL;
 
+  char *p = raw_sessions;
+
+  *st = malloc(sizeof(session_store_t));
+  (*st)->sessions = NULL;
+  (*st)->sessions_len = 0;
   while (i < raw_sessions_len) {
     session_stats_t *s = malloc(sizeof(session_stats_t));
-    sessions = realloc(sessions, sizeof(session_stats_t *) * (num + 1));
-    if (!sessions) {
+    (*st)->sessions = realloc((*st)->sessions, sizeof(session_stats_t *) *
+                                                   ((*st)->sessions_len + 1));
+    if (!(*st)->sessions) {
       perror("deserialize_sessions: realloc failed");
     }
     printf("s: %p\n", s);
-    sessions[num] = s;
-    printf("sessions[num]: %p\n", sessions[num]);
+    (*st)->sessions[(*st)->sessions_len] = s;
+    printf("sessions[num]: %p\n", (*st)->sessions[(*st)->sessions_len]);
 
     memcpy(&(s->hostname_len), p, sizeof(int));
     p += sizeof(int);
@@ -40,21 +51,29 @@ void deserialize_sessions(char *raw_sessions, int raw_sessions_len) {
     memcpy(&(s->total_duration), p, sizeof(int));
     p += sizeof(int);
     i += sizeof(int);
-    printf("deserialize_sessions has_null_terminator: %d\n",
-           has_null_terminator((sessions[num])->hostname));
-    printf("deserialize_sessions: s->hostname_len: %d\n",
-           (sessions[num])->hostname_len);
-    printf("deserialize_sessions: s->hostname and size: %s %zu\n",
-           (sessions[num])->hostname, strlen((sessions[num])->hostname));
-    printf("deserialize_sessions:s->total_duration: %d\n",
-           (sessions[num])->total_duration);
-    num++;
-  }
 
+    (*st)->sessions_len++;
+  };
+
+  printf("(*st)->sessions[0]: %p\n", (*st)->sessions[1]);
+  printf("(*st)->sessions_len: %d\n", (*st)->sessions_len);
   // session_stats_t *sessions_stats[];
-  // for (size_t i = 0; i < raw_sessions_len; i++) {
-  //   // session_stats_t *s =
-  // }
+  for (size_t i = 0; i < (*st)->sessions_len; i++) {
+    printf("deserialize_sessions has_null_terminator: %d\n",
+           has_null_terminator(((*st)->sessions[i])->hostname));
+    printf("deserialize_sessions: s->hostname_len: %d\n",
+           ((*st)->sessions[i])->hostname_len);
+    printf("deserialize_sessions: s->hostname and size: %s %zu\n",
+           ((*st)->sessions[i])->hostname,
+           strlen(((*st)->sessions[i])->hostname));
+    printf("deserialize_sessions:s->total_duration: %d\n",
+           ((*st)->sessions[i])->total_duration);
+  }
+}
+
+void handle_response(uds_request_t *res) {
+  session_store_t *st;
+  deserialize_sessions(res->body, res->header.body_len, &st);
 }
 
 int client_send_request(int sfd, uds_request_t *req) {
@@ -80,7 +99,7 @@ int client_send_request(int sfd, uds_request_t *req) {
   uds_request_t *res = malloc(res_len);
 
   memcpy(res, buf, res_len);
-  deserialize_sessions(res->body, res->header.body_len);
+  handle_response(res);
   free(res);
   return 0;
 }
