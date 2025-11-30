@@ -5,7 +5,7 @@
 #define BYTE_ALIGNED __attribute__((packed))
 
 #define BUF_SIZE 1024
-#define DATA_SIZE 256
+#define DATA_SIZE 252
 
 typedef enum {
   STATUS_OK = 0,
@@ -16,7 +16,7 @@ typedef enum {
 typedef struct header {
   unsigned int body_len;
   STATUS_CODE response_status;
-} BYTE_ALIGNED header_t;
+} header_t;
 
 typedef struct uds_request {
   header_t header;

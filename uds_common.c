@@ -1,4 +1,5 @@
 #include "uds_common.h"
+#include "lib/command/cmd.h"
 #include "lib/types.h"
 #include "lib/utils/string.h"
 #include <stdio.h>
@@ -6,11 +7,19 @@
 #include <string.h>
 #include <unistd.h>
 
+//  DATA_SIZE - sizeof(cmd_res)
+#define MSG_SIZE 252
+
 typedef struct session_store {
   int sessions_len;
   session_stats_t **sessions;
 
 } session_store_t;
+
+typedef struct res_message {
+  CMD_CODE cmd_res;
+  char message[MSG_SIZE];
+} res_message_t;
 
 void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
                           session_store_t **st) {
@@ -72,8 +81,35 @@ void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
 }
 
 void handle_response(uds_request_t *res) {
-  session_store_t *st;
-  deserialize_sessions(res->body, res->header.body_len, &st);
+  // res_message_t *res_message;
+
+  // TODO essayer CMD_CODE code_res = *(CMD_CODE *)res;
+  CMD_CODE code_res;
+  memcpy(&code_res, res->body, sizeof(CMD_CODE));
+  printf("code_res: %d\n", code_res);
+  switch (code_res) {
+  case CMD_SERVER_START:
+    printf("CMD_SERVER_START\n");
+    break;
+  case CMD_SERVER_STOP:
+    printf("CMD_SERVER_STOP\n");
+    break;
+  case CMD_HOSTNAME_LIST:
+    printf("CMD_HOSTNAME_LIST\n");
+    break;
+  case CMD_HOSTNAME_ADD:
+    printf("CMD_HOSTNAME_ADD\n");
+    break;
+  case CMD_GET_STATS: {
+    printf("CMD_GET_STATS\n");
+    session_store_t *st;
+    deserialize_sessions(res->body + sizeof(CMD_CODE),
+                         res->header.body_len - sizeof(CMD_CODE), &st);
+  } break;
+  default:
+    fprintf(stderr, "Command not known!\n");
+    break;
+  }
 }
 
 int client_send_request(int sfd, uds_request_t *req) {
