@@ -14,6 +14,7 @@ typedef struct pcap_session {
 } pcap_session_t;
 
 typedef struct session_stats {
+  // TODO : hostname_len utile ?
   int hostname_len;
   char *hostname;
   int total_duration;

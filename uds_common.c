@@ -21,6 +21,133 @@ typedef struct res_message {
   char message[MSG_SIZE];
 } res_message_t;
 
+void print_sessions(session_store_t *st) {
+  int max_data_size = 0;
+  char buffer[32];
+  // for (size_t i = 0; i < st->sessions_len; i++) {
+  //   printf("session : %s\n", st->sessions[i]->hostname);
+  //   int length = sprintf(buffer, "%ld",
+  //   (long)st->sessions[i]->total_duration); printf("length of total_duration:
+  //   %d\n", length); int hostname_size = strlen(st->sessions[i]->hostname);
+  //   printf("length of hostname: %d\n", hostname_size);
+  //   int total_size = length + hostname_size;
+  //   if (total_size > max_data_size) {
+  //     printf("session : %s is the lhe longest\n", st->sessions[i]->hostname);
+  //     max_data_size = total_size;
+  //   };
+  // }
+
+  char res[1024] = "";
+  char *title = " stats ";
+  char *sub_title_1 = "hostname";       // 8
+  char *sub_title_2 = "total duration"; // 14
+  int title_size = strlen(title);
+
+  int row_size = 67;
+  char *first_row = malloc(row_size);
+  for (size_t i = 0; i < (row_size - title_size) / 2; i++) {
+    strcat(first_row, "*");
+  }
+  strcat(first_row, title);
+  for (size_t i = 0; i < (row_size - title_size) / 2; i++) {
+    strcat(first_row, "*");
+  }
+  strcat(first_row, "\n");
+
+  char *sec_row = malloc(row_size);
+  int col_len = 33;
+  strcat(sec_row, "*");
+  int col_1_spaces_len = (col_len - 1 - strlen(sub_title_1)) / 2;
+  for (size_t i = 0; i < (col_1_spaces_len); i++) {
+    strcat(sec_row, " ");
+  }
+  strcat(sec_row, sub_title_1);
+  for (size_t i = 0; i < (col_1_spaces_len); i++) {
+    strcat(sec_row, " ");
+  }
+  strcat(sec_row, "*");
+
+  int col_2_spaces_len = (col_len - 1 - strlen(sub_title_2)) / 2;
+  for (size_t i = 0; i < (col_2_spaces_len); i++) {
+    strcat(sec_row, " ");
+  }
+  strcat(sec_row, sub_title_2);
+  for (size_t i = 0; i < (col_2_spaces_len); i++) {
+    strcat(sec_row, " ");
+  }
+  strcat(sec_row, "*");
+  strcat(sec_row, "\n");
+
+  char *third_row = malloc(row_size);
+
+  for (size_t i = 0; i < (row_size); i++) {
+    strcat(third_row, "*");
+  }
+  strcat(third_row, "\n");
+  printf("%s", first_row);
+  printf("%s", sec_row);
+  printf("%s", third_row);
+
+  /*     data session     */
+  for (size_t i = 0; i < st->sessions_len; i++) {
+    char *row_s = malloc(row_size);
+    /*      first col     */
+
+    strcat(row_s, "*");
+    int is_odd = strlen(st->sessions[i]->hostname) % 2;
+    int before_s_spaces_len =
+        ((col_len - 1 - strlen(st->sessions[i]->hostname)) / 2) + is_odd;
+
+    for (size_t i = 0; i < (before_s_spaces_len); i++) {
+      strcat(row_s, " ");
+    }
+
+    strcat(row_s, st->sessions[i]->hostname);
+
+    int after_s_spaces_len =
+        ((col_len - 1 - strlen(st->sessions[i]->hostname)) / 2);
+
+    for (size_t i = 0; i < (after_s_spaces_len); i++) {
+      strcat(row_s, " ");
+    }
+    strcat(row_s, "*");
+
+    /*      second col     */
+
+    int length_data =
+        sprintf(buffer, "%ld", (long)st->sessions[i]->total_duration);
+
+    int is_odd_col2 = length_data % 2;
+    before_s_spaces_len = ((col_len - 1 - length_data) / 2) + is_odd_col2;
+
+    for (size_t i = 0; i < (before_s_spaces_len); i++) {
+      strcat(row_s, " ");
+    }
+    char int_to_str[length_data];
+    snprintf(int_to_str, length_data + 1, "%d",
+             st->sessions[i]->total_duration);
+    strcat(row_s, int_to_str);
+
+    int after_s_spaces_len_2 = ((col_len - 1 - length_data) / 2);
+
+    for (size_t i = 0; i < (after_s_spaces_len_2); i++) {
+      strcat(row_s, " ");
+    }
+    strcat(row_s, "*\n");
+    printf("%s", row_s);
+
+    /*      inter row     */
+
+    char *inter_row = malloc(row_size);
+
+    for (size_t i = 0; i < (row_size); i++) {
+      strcat(inter_row, "*");
+    }
+    strcat(inter_row, "\n");
+    printf("%s", inter_row);
+  }
+}
+
 void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
                           session_store_t **st) {
   printf("body len: %d\n", raw_sessions_len);
@@ -105,6 +232,7 @@ void handle_response(uds_request_t *res) {
     session_store_t *st;
     deserialize_sessions(res->body + sizeof(CMD_CODE),
                          res->header.body_len - sizeof(CMD_CODE), &st);
+    print_sessions(st);
   } break;
   default:
     fprintf(stderr, "Command not known!\n");

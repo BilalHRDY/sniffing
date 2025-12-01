@@ -5,7 +5,7 @@
 #define BYTE_ALIGNED __attribute__((packed))
 
 #define BUF_SIZE 1024
-#define DATA_SIZE 252
+#define DATA_SIZE 256
 
 typedef enum {
   STATUS_OK = 0,
