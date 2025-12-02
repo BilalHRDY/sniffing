@@ -21,131 +21,90 @@ typedef struct res_message {
   char message[MSG_SIZE];
 } res_message_t;
 
+void fill_with_str(char *dest, char *src, int count) {
+  for (size_t i = 0; i < count; i++) {
+    strcat(dest, src);
+  }
+}
+
+char *format_duration(int timestamp) {
+  int days_count = timestamp / 86400;
+  int rest = timestamp % 86400;
+
+  int hours_count = rest / 3600;
+  rest = timestamp % 3600;
+
+  int min_count = rest / 60;
+  int sec_count = timestamp % 60;
+
+  char *output = malloc(16);
+
+  sprintf(output, "%dd %dh %dm %ds", days_count, hours_count, min_count,
+          sec_count);
+  for (size_t i = 0; output[i] != '\0'; i++) {
+    printf("time[%zu]: %c\n", i, output[i]);
+  }
+  return output;
+}
+
+void add_column(char *dest, int col_size, char *data, int with_end_char) {
+  strcat(dest, "*");
+
+  int min_padding = 4;
+  int data_len = strlen(data);
+  int inner_width = col_size;
+
+  if (data_len > inner_width - (min_padding * 2)) {
+    data_len = inner_width - (min_padding * 2);
+  }
+
+  int available = inner_width - data_len;
+
+  int left_pad = available / 2;
+  int right_pad = available - left_pad;
+
+  fill_with_str(dest, " ", left_pad);
+  strncat(dest, data, data_len);
+  fill_with_str(dest, " ", right_pad);
+
+  if (with_end_char) {
+    strcat(dest, "*");
+  }
+}
+
 void print_sessions(session_store_t *st) {
-  int max_data_size = 0;
+  int test = 1 / 2;
+  printf("test: %d\n", test);
   char buffer[32];
-  // for (size_t i = 0; i < st->sessions_len; i++) {
-  //   printf("session : %s\n", st->sessions[i]->hostname);
-  //   int length = sprintf(buffer, "%ld",
-  //   (long)st->sessions[i]->total_duration); printf("length of total_duration:
-  //   %d\n", length); int hostname_size = strlen(st->sessions[i]->hostname);
-  //   printf("length of hostname: %d\n", hostname_size);
-  //   int total_size = length + hostname_size;
-  //   if (total_size > max_data_size) {
-  //     printf("session : %s is the lhe longest\n", st->sessions[i]->hostname);
-  //     max_data_size = total_size;
-  //   };
-  // }
+  char output[1024] = "";
+  char *title_1 = "HOSTNAME";       // 8
+  char *title_2 = "TOTAL DURATION"; // 14
 
-  char res[1024] = "";
-  char *title = " stats ";
-  char *sub_title_1 = "hostname";       // 8
-  char *sub_title_2 = "total duration"; // 14
-  int title_size = strlen(title);
+  // must be even
+  int col_len = 40;
+  int raw_line_len = (col_len * 2) + 3;
+  fill_with_str(output, "*", raw_line_len);
 
-  int row_size = 67;
-  char *first_row = malloc(row_size);
-  for (size_t i = 0; i < (row_size - title_size) / 2; i++) {
-    strcat(first_row, "*");
-  }
-  strcat(first_row, title);
-  for (size_t i = 0; i < (row_size - title_size) / 2; i++) {
-    strcat(first_row, "*");
-  }
-  strcat(first_row, "\n");
+  strcat(output, "\n");
+  add_column(output, col_len, title_1, 0);
+  add_column(output, col_len, title_2, 1);
 
-  char *sec_row = malloc(row_size);
-  int col_len = 33;
-  strcat(sec_row, "*");
-  int col_1_spaces_len = (col_len - 1 - strlen(sub_title_1)) / 2;
-  for (size_t i = 0; i < (col_1_spaces_len); i++) {
-    strcat(sec_row, " ");
-  }
-  strcat(sec_row, sub_title_1);
-  for (size_t i = 0; i < (col_1_spaces_len); i++) {
-    strcat(sec_row, " ");
-  }
-  strcat(sec_row, "*");
-
-  int col_2_spaces_len = (col_len - 1 - strlen(sub_title_2)) / 2;
-  for (size_t i = 0; i < (col_2_spaces_len); i++) {
-    strcat(sec_row, " ");
-  }
-  strcat(sec_row, sub_title_2);
-  for (size_t i = 0; i < (col_2_spaces_len); i++) {
-    strcat(sec_row, " ");
-  }
-  strcat(sec_row, "*");
-  strcat(sec_row, "\n");
-
-  char *third_row = malloc(row_size);
-
-  for (size_t i = 0; i < (row_size); i++) {
-    strcat(third_row, "*");
-  }
-  strcat(third_row, "\n");
-  printf("%s", first_row);
-  printf("%s", sec_row);
-  printf("%s", third_row);
+  strcat(output, "\n");
+  fill_with_str(output, "*", raw_line_len);
+  strcat(output, "\n");
 
   /*     data session     */
   for (size_t i = 0; i < st->sessions_len; i++) {
-    char *row_s = malloc(row_size);
-    /*      first col     */
-
-    strcat(row_s, "*");
-    int is_odd = strlen(st->sessions[i]->hostname) % 2;
-    int before_s_spaces_len =
-        ((col_len - 1 - strlen(st->sessions[i]->hostname)) / 2) + is_odd;
-
-    for (size_t i = 0; i < (before_s_spaces_len); i++) {
-      strcat(row_s, " ");
-    }
-
-    strcat(row_s, st->sessions[i]->hostname);
-
-    int after_s_spaces_len =
-        ((col_len - 1 - strlen(st->sessions[i]->hostname)) / 2);
-
-    for (size_t i = 0; i < (after_s_spaces_len); i++) {
-      strcat(row_s, " ");
-    }
-    strcat(row_s, "*");
-
-    /*      second col     */
-
-    int length_data =
-        sprintf(buffer, "%ld", (long)st->sessions[i]->total_duration);
-
-    int is_odd_col2 = length_data % 2;
-    before_s_spaces_len = ((col_len - 1 - length_data) / 2) + is_odd_col2;
-
-    for (size_t i = 0; i < (before_s_spaces_len); i++) {
-      strcat(row_s, " ");
-    }
-    char int_to_str[length_data];
-    snprintf(int_to_str, length_data + 1, "%d",
-             st->sessions[i]->total_duration);
-    strcat(row_s, int_to_str);
-
-    int after_s_spaces_len_2 = ((col_len - 1 - length_data) / 2);
-
-    for (size_t i = 0; i < (after_s_spaces_len_2); i++) {
-      strcat(row_s, " ");
-    }
-    strcat(row_s, "*\n");
-    printf("%s", row_s);
+    add_column(output, col_len, st->sessions[i]->hostname, 0);
+    char *time = format_duration(st->sessions[i]->total_duration); // 11 char
+    add_column(output, col_len, time, 1);
+    strcat(output, "\n");
 
     /*      inter row     */
-
-    char *inter_row = malloc(row_size);
-
-    for (size_t i = 0; i < (row_size); i++) {
-      strcat(inter_row, "*");
-    }
-    strcat(inter_row, "\n");
-    printf("%s", inter_row);
+    fill_with_str(output, "*", raw_line_len);
+    strcat(output, "\n");
   }
+  printf("%s", output);
 }
 
 void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
