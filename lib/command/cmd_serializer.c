@@ -4,8 +4,8 @@
 #include <string.h>
 
 int serialize_cmd(command_t *cmd, char *dest) {
-  printf("cmd.code: %d\n", cmd->code);
-  printf("cmd.raw_args: %s\n", cmd->raw_args);
+  // printf("cmd.code: %d\n", cmd->code);
+  // printf("cmd.raw_args: %s\n", cmd->raw_args);
 
   int code_len = sizeof(cmd->code);
   int args_len = cmd->raw_args != NULL ? strlen(cmd->raw_args) + 1 : 0;
@@ -27,7 +27,7 @@ void deserialize_cmd(char *raw_cmd, int raw_cmd_len, command_t *cmd) {
 
   p += code_len;
   int args_len = raw_cmd_len - code_len;
-  printf("args_len: %d\n", args_len);
+  // printf("args_len: %d\n", args_len);
 
   cmd->raw_args = malloc(args_len);
   if (cmd->raw_args == NULL) {

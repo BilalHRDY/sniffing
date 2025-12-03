@@ -1,7 +1,7 @@
 #include "uds_common.h"
 #include "lib/command/cmd.h"
 #include "lib/types.h"
-#include "lib/utils/string.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,9 +21,13 @@ typedef struct res_message {
   char message[MSG_SIZE];
 } res_message_t;
 
-void fill_with_str(char *dest, char *src, int count) {
+void fill_with_str(char **dest, char *str, int count) {
+  printf("strlen(str): %zu\n", strlen(str));
+  *dest = realloc(*dest, (count * strlen(str)) + 1);
+  assert(*dest != NULL);
   for (size_t i = 0; i < count; i++) {
-    strcat(dest, src);
+    // *dest = strndup(src, strlen(src));
+    strcat(*dest, str);
   }
 }
 
@@ -47,8 +51,8 @@ char *format_duration(int timestamp) {
   return output;
 }
 
-void add_column(char *dest, int col_size, char *data, int with_end_char) {
-  strcat(dest, "*");
+void add_column(char **dest, int col_size, char *data, int end_separator) {
+  strcat(*dest, "*");
 
   int min_padding = 4;
   int data_len = strlen(data);
@@ -64,46 +68,47 @@ void add_column(char *dest, int col_size, char *data, int with_end_char) {
   int right_pad = available - left_pad;
 
   fill_with_str(dest, " ", left_pad);
-  strncat(dest, data, data_len);
+  strncat(*dest, data, data_len);
   fill_with_str(dest, " ", right_pad);
 
-  if (with_end_char) {
-    strcat(dest, "*");
+  if (end_separator) {
+    strcat(*dest, "*");
   }
 }
 
 void print_sessions(session_store_t *st) {
-  int test = 1 / 2;
-  printf("test: %d\n", test);
   char buffer[32];
-  char output[1024] = "";
+  char *output = malloc(1);
+  output[0] = '\0';
   char *title_1 = "HOSTNAME";       // 8
   char *title_2 = "TOTAL DURATION"; // 14
 
-  // must be even
-  int col_len = 40;
-  int raw_line_len = (col_len * 2) + 3;
-  fill_with_str(output, "*", raw_line_len);
+  int inner_width_col = 40;
+  int separators_len = 3;
+  int raw_line_len = (inner_width_col * 2) + separators_len;
+  printf("raw_line_len: %d\n", raw_line_len);
+  fill_with_str(&output, "*", raw_line_len);
 
   strcat(output, "\n");
-  add_column(output, col_len, title_1, 0);
-  add_column(output, col_len, title_2, 1);
+  add_column(&output, inner_width_col, title_1, 0);
+  // add_column(output, inner_width_col, title_2, 1);
 
-  strcat(output, "\n");
-  fill_with_str(output, "*", raw_line_len);
-  strcat(output, "\n");
+  // strcat(output, "\n");
+  // fill_with_str(output, "*", raw_line_len);
+  // strcat(output, "\n");
 
-  /*     data session     */
-  for (size_t i = 0; i < st->sessions_len; i++) {
-    add_column(output, col_len, st->sessions[i]->hostname, 0);
-    char *time = format_duration(st->sessions[i]->total_duration); // 11 char
-    add_column(output, col_len, time, 1);
-    strcat(output, "\n");
+  // /*     data session     */
+  // for (size_t i = 0; i < st->sessions_len; i++) {
+  //   add_column(output, inner_width_col, st->sessions[i]->hostname, 0);
 
-    /*      inter row     */
-    fill_with_str(output, "*", raw_line_len);
-    strcat(output, "\n");
-  }
+  //   char *time = format_duration(st->sessions[i]->total_duration);
+  //   add_column(output, inner_width_col, time, 1);
+
+  //   strcat(output, "\n");
+
+  //   fill_with_str(output, "*", raw_line_len);
+  //   strcat(output, "\n");
+  // }
   printf("%s", output);
 }
 
@@ -129,9 +134,9 @@ void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
     if (!(*st)->sessions) {
       perror("deserialize_sessions: realloc failed");
     }
-    printf("s: %p\n", s);
+    // printf("s: %p\n", s);
     (*st)->sessions[(*st)->sessions_len] = s;
-    printf("sessions[num]: %p\n", (*st)->sessions[(*st)->sessions_len]);
+    // printf("sessions[num]: %p\n", (*st)->sessions[(*st)->sessions_len]);
 
     memcpy(&(s->hostname_len), p, sizeof(int));
     p += sizeof(int);
@@ -150,20 +155,20 @@ void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
     (*st)->sessions_len++;
   };
 
-  printf("(*st)->sessions[0]: %p\n", (*st)->sessions[1]);
-  printf("(*st)->sessions_len: %d\n", (*st)->sessions_len);
-  // session_stats_t *sessions_stats[];
-  for (size_t i = 0; i < (*st)->sessions_len; i++) {
-    printf("deserialize_sessions has_null_terminator: %d\n",
-           has_null_terminator(((*st)->sessions[i])->hostname));
-    printf("deserialize_sessions: s->hostname_len: %d\n",
-           ((*st)->sessions[i])->hostname_len);
-    printf("deserialize_sessions: s->hostname and size: %s %zu\n",
-           ((*st)->sessions[i])->hostname,
-           strlen(((*st)->sessions[i])->hostname));
-    printf("deserialize_sessions:s->total_duration: %d\n",
-           ((*st)->sessions[i])->total_duration);
-  }
+  // printf("(*st)->sessions[0]: %p\n", (*st)->sessions[1]);
+  // printf("(*st)->sessions_len: %d\n", (*st)->sessions_len);
+  // // session_stats_t *sessions_stats[];
+  // for (size_t i = 0; i < (*st)->sessions_len; i++) {
+  //   printf("deserialize_sessions has_null_terminator: %d\n",
+  //          has_null_terminator(((*st)->sessions[i])->hostname));
+  //   printf("deserialize_sessions: s->hostname_len: %d\n",
+  //          ((*st)->sessions[i])->hostname_len);
+  //   printf("deserialize_sessions: s->hostname and size: %s %zu\n",
+  //          ((*st)->sessions[i])->hostname,
+  //          strlen(((*st)->sessions[i])->hostname));
+  //   printf("deserialize_sessions:s->total_duration: %d\n",
+  //          ((*st)->sessions[i])->total_duration);
+  // }
 }
 
 void handle_response(uds_request_t *res) {
@@ -202,10 +207,10 @@ void handle_response(uds_request_t *res) {
 int client_send_request(int sfd, uds_request_t *req) {
 
   ssize_t req_len = sizeof(header_t) + req->header.body_len;
-  printf("sizeof(body_len): %u\n", req->header.body_len);
-  printf("sizeof(req_len): %zu\n", req_len);
+  // printf("sizeof(body_len): %u\n", req->header.body_len);
+  // printf("sizeof(req_len): %zu\n", req_len);
   ssize_t count = write(sfd, req, req_len);
-  printf("count: %zd\n", count);
+  // printf("count: %zd\n", count);
   if (count != req_len) {
 
     perror("Error writing to socket");
@@ -218,7 +223,7 @@ int client_send_request(int sfd, uds_request_t *req) {
     return rc;
   }
 
-  printf(" res_len: %lu\n", res_len);
+  // printf(" res_len: %lu\n", res_len);
   uds_request_t *res = malloc(res_len);
 
   memcpy(res, buf, res_len);

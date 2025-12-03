@@ -83,7 +83,7 @@ int init_client_request(char *input, uds_request_t *req) {
   user_input_to_cmd(input, &cmd);
 
   req->header.body_len = serialize_cmd(cmd, req->body);
-  printf(" req->header.body_len: %d\n", req->header.body_len);
+  // printf(" req->header.body_len: %d\n", req->header.body_len);
   return 1;
 }
 
