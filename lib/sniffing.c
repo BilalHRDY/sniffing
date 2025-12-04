@@ -1,9 +1,9 @@
 #include "./sniffing.h"
 #include "./db.h"
 #include "./ip.h"
+#include "./utils/string/string.h"
 #include "types.h"
 #include "utils/hashmap.h"
-#include "utils/string.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>

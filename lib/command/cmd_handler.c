@@ -1,6 +1,6 @@
 #include "../../uds_common.h"
 #include "../types.h"
-#include "../utils/string.h"
+#include "../utils/string/string.h"
 #include "cmd.h"
 #include "cmd_serializer.h"
 #include <stdlib.h>

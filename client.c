@@ -1,5 +1,5 @@
 #include "lib/command/cmd_serializer.h"
-#include "lib/utils/string.h"
+#include "lib/utils/string/string.h"
 #include "uds_common.h"
 #include <stdio.h>
 #include <stdlib.h>

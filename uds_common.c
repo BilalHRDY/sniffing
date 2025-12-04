@@ -1,6 +1,7 @@
 #include "uds_common.h"
 #include "lib/command/cmd.h"
 #include "lib/types.h"
+#include "lib/utils/string/dynamic_string.h"
 #include <malloc/malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,80 +17,10 @@ typedef struct session_store {
 
 } session_store_t;
 
-typedef struct dynamic_string {
-  char *str;
-  int capacity;
-  int count;
-} dynamic_string_t;
-
-// void append_to_string_limit(dynamic_string_t *dest, char *str) {
-//   if (strlen(str) + dest->count >= dest->capacity) {
-//     dest->str = realloc(dest->str, dest->capacity * 2);
-//     dest->capacity *= 2;
-//     dest->count += strlen(str);
-//   }
-//   strcat(dest->str, str);
-// }
-
-void append_to_string_limit(dynamic_string_t *dest, char *str, int str_len) {
-  // if (dest->str == NULL) {
-  //   dest->capacity = 20;
-  //   dest->count = 0;
-  //   dest->str = strdup("\0");
-  // }
-  /*
-  dest->capacity = 2
-  dest->count = 4  => "aaaa\0"
-  str_len = 8 => "azertyui\0"
-  required_capacity = 4 + 8
-
-  realloc(5)
-
-
-
-  */
-  // printf("append_to_string_limit\n");
-  if (dest->count + str_len >= dest->capacity) {
-    printf("malloc_size old size: %zu\n", malloc_size(dest->str));
-    printf("capacity old size: %d\n", dest->capacity);
-    printf("dest->str old size: %zu\n", strlen(dest->str));
-    printf("\n");
-    int required_capacity = dest->count + str_len + 1;
-    int capacity = dest->capacity;
-    while (capacity < required_capacity) {
-      capacity *= 2;
-    }
-    dest->capacity = capacity;
-    // TODO free
-    dest->str = realloc(dest->str, capacity);
-    printf("malloc_size new size: %zu\n", malloc_size(dest->str));
-    printf("capacity new size: %d\n", dest->capacity);
-    strncat(dest->str, str, str_len);
-    printf(" dest->str new size: %zu\n", strlen(dest->str));
-    printf("\n");
-
-    dest->count += str_len;
-    return;
-  }
-  strncat(dest->str, str, str_len);
-  dest->count += str_len;
-}
-
 typedef struct res_message {
   CMD_CODE cmd_res;
   char message[MSG_SIZE];
 } res_message_t;
-
-void fill_with_str(dynamic_string_t *dest, char *str, int count, int *malloc) {
-  // printf("fill_with_str start *dest: %p\n", *dest);
-  // *malloc = strlen(*dest) + (count * strlen(str));
-  // *dest = realloc(*dest, strlen(*dest) + (count * strlen(str)));
-  for (size_t i = 0; i < count; i++) {
-    // *dest = strndup(src, strlen(src));
-    append_to_string_limit(dest, str, strlen(str));
-  }
-  // printf("fill_with_str end *dest: %p\n", *dest);
-}
 
 char *format_duration(int timestamp) {
   int days_count = timestamp / 86400;
@@ -113,8 +44,8 @@ char *format_duration(int timestamp) {
 }
 
 void add_column(dynamic_string_t *dest, int col_width, char *text,
-                int add_end_separator, int *malloc) {
-  append_to_string_limit(dest, "*", 1);
+                int add_end_separator) {
+  add_to_ds(dest, "*");
 
   int min_padding = 4;
   int text_len = strlen(text);
@@ -129,12 +60,12 @@ void add_column(dynamic_string_t *dest, int col_width, char *text,
   int left_pad = remaining_space / 2;
   int right_pad = remaining_space - left_pad;
 
-  fill_with_str(dest, " ", left_pad, malloc);
-  append_to_string_limit(dest, text, text_len);
-  fill_with_str(dest, " ", right_pad, malloc);
+  fill_to_ds(dest, " ", left_pad);
+  add_to_ds(dest, text);
+  fill_to_ds(dest, " ", right_pad);
 
   if (add_end_separator) {
-    append_to_string_limit(dest, "*", 1);
+    add_to_ds(dest, "*");
   }
 }
 
@@ -144,7 +75,7 @@ void print_sessions(session_store_t *st) {
   output->capacity = 8;
   output->count = 0;
   output->str = strdup("\0");
-  // append_to_string_limit(output, "\0");
+  // add_to_ds(output, "\0");
 
   char *title_1 = "HOSTNAME";       // 8
   char *title_2 = "TOTAL DURATION"; // 14
@@ -163,31 +94,30 @@ void print_sessions(session_store_t *st) {
     strcat(test, "i");
   }
 
-  append_to_string_limit(output, test, 500);
-  fill_with_str(output, "*", raw_line_len, &count_malloc);
+  add_to_ds(output, test);
+  fill_to_ds(output, "*", raw_line_len);
 
-  append_to_string_limit(output, "\n", 1);
+  add_to_ds(output, "\n");
 
-  add_column(output, inner_width_col, title_1, 0, &count_malloc);
-  add_column(output, inner_width_col, title_2, 1, &count_malloc);
+  add_column(output, inner_width_col, title_1, 0);
+  add_column(output, inner_width_col, title_2, 1);
 
-  append_to_string_limit(output, "\n", 1);
+  add_to_ds(output, "\n");
 
-  fill_with_str(output, "*", raw_line_len, &count_malloc);
-  append_to_string_limit(output, "\n", 1);
+  fill_to_ds(output, "*", raw_line_len);
+  add_to_ds(output, "\n");
 
   // /*     data session     */
   for (size_t i = 0; i < st->sessions_len; i++) {
-    add_column(output, inner_width_col, st->sessions[i]->hostname, 0,
-               &count_malloc);
+    add_column(output, inner_width_col, st->sessions[i]->hostname, 0);
 
     char *time = format_duration(st->sessions[i]->total_duration);
-    add_column(output, inner_width_col, time, 1, &count_malloc);
+    add_column(output, inner_width_col, time, 1);
 
-    append_to_string_limit(output, "\n", 1);
+    add_to_ds(output, "\n");
 
-    fill_with_str(output, "*", raw_line_len, &count_malloc);
-    append_to_string_limit(output, "\n", 1);
+    fill_to_ds(output, "*", raw_line_len);
+    add_to_ds(output, "\n");
 
     // strcat(output, "\n");
   }
