@@ -63,7 +63,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
 
   pcap_session_t *s = ht_get(ctx->sessions_table, hostname);
   if (s == NULL) {
-    printf("  CREATE SESSION --------------------, %s\n", hostname);
+    printf("  CREATE SESSION ----------------------, %s\n", hostname);
     s = create_session(header->ts.tv_sec, hostname);
     ht_set(ctx->sessions_table, hostname, s);
     enqueue(ctx->q, s);
@@ -73,7 +73,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
   }
 
   else if (header->ts.tv_sec == s->last_visit) {
-    // printf("  même timestamp que le paquet précédent\n");
+    printf("  même timestamp que le paquet précédent\n");
     return;
   }
 
