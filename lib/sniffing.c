@@ -51,53 +51,68 @@ pcap_session_t *create_session(time_t timestamp, char *hostname) {
   return s;
 }
 
+void *packet_handler_thread(void *data) {
+  printf("------------------ packet_thread ------------------ \n");
+
+  context_t *ctx = (context_t *)data;
+
+  while (1) {
+    pthread_cond_wait(&ctx->pck_cond, &ctx->mutex);
+    while (!is_empty(ctx->packet_queue)) {
+      full_packet_t *full_p = (full_packet_t *)dequeue(ctx->packet_queue);
+      const struct pcap_pkthdr *header = full_p->header;
+      const u_char *packet = full_p->packet;
+
+      char ipstr[INET6_ADDRSTRLEN];
+      int version = packet[14] >> 4;
+
+      get_dst_ip_string_from_packets(packet, ipstr, version);
+      char *hostname = ht_get(ctx->domain_cache->ip_to_domain, ipstr);
+
+      pcap_session_t *s = ht_get(ctx->sessions_table, hostname);
+      if (s == NULL) {
+        printf("  CREATE SESSION ----------------------, %s\n", hostname);
+        s = create_session(header->ts.tv_sec, hostname);
+        ht_set(ctx->sessions_table, hostname, s);
+        insert_session(s, ctx->db);
+      }
+
+      else if (header->ts.tv_sec == s->last_visit) {
+        printf("  même timestamp que le paquet précédent\n");
+        // return;
+      } else if (header->ts.tv_sec - s->last_visit >= SESSION_REINIT_INTERVAL) {
+        printf("  RE-INIT : more that %d sec - no time to save  \n",
+               SESSION_REINIT_INTERVAL);
+        printf("  {ts.tv_sec: %ld,last_visit: %ld\n", header->ts.tv_sec,
+               s->last_visit);
+        s->first_visit = header->ts.tv_sec;
+        s->last_visit = s->first_visit;
+      } else {
+        printf("  EDIT --------------------\n");
+        printf("  {ts.tv_sec: %ld,last_visit: %ld\n", header->ts.tv_sec,
+               s->last_visit);
+        s->time_to_save += header->ts.tv_sec - s->last_visit;
+        s->last_visit = header->ts.tv_sec;
+        insert_session(s, ctx->db);
+
+        s->time_to_save = 0;
+      }
+      free(full_p);
+    }
+  }
+}
+
 void packet_handler(u_char *user, const struct pcap_pkthdr *header,
                     const u_char *packet) {
 
-  char ipstr[INET6_ADDRSTRLEN];
-  int version = packet[14] >> 4;
   context_t *ctx = (context_t *)user;
+  full_packet_t *full_packet = malloc(sizeof(full_packet_t));
 
-  get_dst_ip_string_from_packets(packet, ipstr, version);
-  char *hostname = ht_get(ctx->domain_cache->ip_to_domain, ipstr);
+  full_packet->header = header;
+  full_packet->packet = packet;
 
-  pcap_session_t *s = ht_get(ctx->sessions_table, hostname);
-  if (s == NULL) {
-    printf("  CREATE SESSION ----------------------, %s\n", hostname);
-    s = create_session(header->ts.tv_sec, hostname);
-    ht_set(ctx->sessions_table, hostname, s);
-    enqueue(ctx->q, s);
-    pthread_cond_signal(&ctx->condition);
-
-    return;
-  }
-
-  else if (header->ts.tv_sec == s->last_visit) {
-    printf("  même timestamp que le paquet précédent\n");
-    return;
-  }
-
-  else if (header->ts.tv_sec - s->last_visit >= 10) {
-    printf("  RE-INIT --------------------  \n");
-    printf("  {ts.tv_sec: %ld,last_visit: %ld\n", header->ts.tv_sec,
-           s->last_visit);
-    s->first_visit = header->ts.tv_sec;
-    s->last_visit = s->first_visit;
-    return;
-  } else {
-    printf("  EDIT --------------------\n");
-    printf("  {ts.tv_sec: %ld,last_visit: %ld\n", header->ts.tv_sec,
-           s->last_visit);
-    s->time_to_save += header->ts.tv_sec - s->last_visit;
-    s->last_visit = header->ts.tv_sec;
-    pcap_session_t *session_copy = malloc(sizeof(pcap_session_t));
-    memcpy(session_copy, s, sizeof(pcap_session_t));
-    enqueue(ctx->q, session_copy);
-    pthread_cond_signal(&ctx->condition);
-    s->time_to_save = 0;
-
-    return;
-  }
+  enqueue(ctx->packet_queue, full_packet);
+  pthread_cond_signal(&ctx->pck_cond);
 };
 
 // pcap + ip
@@ -144,22 +159,6 @@ SNIFFING_API build_filter_from_ip_to_domain(ht *ip_to_domain, char **filter) {
     }
   }
   return SNIFFING_OK;
-}
-
-void *session_db_writer_thread(void *data) {
-  printf("------------------ session_db_writer ------------------ \n");
-
-  context_t *ctx = (context_t *)data;
-  printf("is_empty: %d\n", is_empty(ctx->q));
-  while (1) {
-    pthread_cond_wait(&ctx->condition, &ctx->mutex);
-    while (!is_empty(ctx->q)) {
-      pcap_session_t *s = (pcap_session_t *)dequeue(ctx->q);
-      insert_session(s, ctx->db);
-    }
-  }
-
-  return NULL;
 }
 
 // cache + db + ip
@@ -273,7 +272,7 @@ void *pcap_runner_thread(void *data) {
     printf("pcap is starting...\n");
     while (!ctx->paused) {
 
-      pthread_mutex_unlock(&ctx->mutex2); // libérer pour pcap
+      pthread_mutex_unlock(&ctx->mutex2);
       pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
       pthread_mutex_lock(&ctx->mutex2);
     }

@@ -85,16 +85,7 @@ void print_sessions(session_store_t *st) {
   int separators_len = 3;
   int raw_line_len = (inner_width_col * 2) + separators_len;
   // printf("print_sessions output: %p\n", output);
-  int count_malloc = 0;
 
-  char *test = malloc(501);
-  test[0] = '\0';
-
-  for (size_t i = 0; i < 500; i++) {
-    strcat(test, "i");
-  }
-
-  add_to_ds(output, test);
   fill_to_ds(output, "*", raw_line_len);
 
   add_to_ds(output, "\n");

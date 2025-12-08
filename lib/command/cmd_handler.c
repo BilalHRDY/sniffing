@@ -88,9 +88,10 @@ void process_cmd(command_t *cmd, char *cmd_res, unsigned int *cmd_res_size,
 };
 
 void process_raw_cmd(char *raw_cmd, int raw_cmd_len, char *cmd_res,
-                     unsigned *cmd_res_size, context_t *ctx) {
+                     unsigned int *cmd_res_size, unsigned char *user_data) {
   printf("process_raw_cmd\n");
 
+  context_t *ctx = (context_t *)user_data;
   command_t cmd;
 
   deserialize_cmd(raw_cmd, raw_cmd_len, &cmd);

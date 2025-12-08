@@ -1,11 +1,11 @@
 #ifndef SNIFFING_H
 #define SNIFFING_H
 
-#include "utils/hashmap.h"
-#include "utils/queue.h"
-#include <netdb.h>
-#include <pcap/pcap.h>
-#include <sqlite3.h>
+// #include "utils/hashmap.h"
+// #include "utils/queue.h"
+// #include <netdb.h>
+// #include <pcap/pcap.h>
+// #include <sqlite3.h>
 
 typedef enum {
   SNIFFING_OK = 0,
@@ -17,6 +17,13 @@ typedef enum {
   SNIFFING_MEMORY_ERROR,
 
 } SNIFFING_API;
+
+typedef struct session_stats {
+  // TODO : hostname_len utile ?
+  int hostname_len;
+  char *hostname;
+  int total_duration;
+} session_stats_t;
 
 typedef struct context context_t;
 
