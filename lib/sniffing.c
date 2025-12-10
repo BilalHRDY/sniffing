@@ -51,7 +51,7 @@ pcap_session_t *create_session(time_t timestamp, char *hostname) {
   return s;
 }
 
-void *packet_handler_thread(void *data) {
+void *packet_queue_thread(void *data) {
   printf("------------------ packet_thread ------------------ \n");
 
   context_t *ctx = (context_t *)data;
@@ -110,7 +110,7 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
 
   full_packet->header = header;
   full_packet->packet = packet;
-
+  printf("packet_handler enqueue\n");
   enqueue(ctx->packet_queue, full_packet);
   pthread_cond_signal(&ctx->pck_cond);
 };
@@ -144,20 +144,25 @@ static SNIFFING_API add_ip_in_filter(const char *ip, char **filter,
 
 // pcap + ip + cache
 SNIFFING_API build_filter_from_ip_to_domain(ht *ip_to_domain, char **filter) {
-  *filter = strdup("ip or ip6 and (dst host ");
+  *filter = NULL;
+  if (ip_to_domain->count > 0) {
 
-  char *separator = " or dst host ";
-  hti it = ht_iterator(ip_to_domain);
-  bool is_last_ip = false;
-  SNIFFING_API rc;
+    *filter = strdup("ip or ip6 and (dst host ");
 
-  while (ht_next(&it)) {
-    is_last_ip = (it.visited == ht_length(ip_to_domain));
-    if ((rc = add_ip_in_filter(it.key, filter, separator, is_last_ip)) !=
-        SNIFFING_OK) {
-      return rc;
+    char *separator = " or dst host ";
+    hti it = ht_iterator(ip_to_domain);
+    bool is_last_ip = false;
+    SNIFFING_API rc;
+
+    while (ht_next(&it)) {
+      is_last_ip = (it.visited == ht_length(ip_to_domain));
+      if ((rc = add_ip_in_filter(it.key, filter, separator, is_last_ip)) !=
+          SNIFFING_OK) {
+        return rc;
+      }
     }
   }
+
   return SNIFFING_OK;
 }
 
@@ -219,15 +224,14 @@ SNIFFING_API update_ip_domain_table(ht *ip_to_domain, int domains_len,
   return SNIFFING_OK;
 };
 
-// PCAP + cache + filter
-void *pcap_runner_thread(void *data) {
-  context_t *ctx = (context_t *)data;
-
-  struct bpf_program fp;
-  ctx->bpf = &fp;
+void init_pcap(context_t *ctx) {
+  // TODO free fp
+  struct bpf_program *fp = malloc(sizeof(struct bpf_program));
+  ctx->bpf = fp;
   char error_buffer[PCAP_ERRBUF_SIZE];
   const char *device = "en0";
   pcap_t *handle;
+  // TODO free handle ?
   handle = pcap_open_live(device, BUFSIZ, 0, 1000, error_buffer);
   if (handle == NULL) {
     fprintf(stderr, "Erreur: %s\n", error_buffer);
@@ -235,29 +239,28 @@ void *pcap_runner_thread(void *data) {
   }
   ctx->handle = handle;
 
-  bpf_u_int32 net, mask;
-  pcap_lookupnet(device, &net, &mask, error_buffer);
+  bpf_u_int32 net;
+  // TODO free mask
+  ctx->mask = malloc(sizeof(bpf_u_int32));
+  pcap_lookupnet(device, &net, ctx->mask, error_buffer);
 
-  ctx->mask = &mask;
+  build_filter_from_ip_to_domain(ctx->domain_cache->ip_to_domain,
+                                 &(ctx->filter));
 
-  if (!ctx->paused) {
-    char *filter;
-
-    build_filter_from_ip_to_domain(ctx->domain_cache->ip_to_domain, &filter);
-
-    if (pcap_compile(handle, &fp, filter, 1, mask)) {
-      fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(handle));
-      exit(EXIT_FAILURE);
-    }
-    if (pcap_setfilter(handle, &fp) == -1) {
-      fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(handle));
-      exit(EXIT_FAILURE);
-    }
+  if (pcap_compile(ctx->handle, ctx->bpf, ctx->filter, 1, *(ctx->mask))) {
+    fprintf(stderr, "Erreur pcap_compile: %s\n", pcap_geterr(ctx->handle));
+    exit(EXIT_FAILURE);
   }
 
-  printf("ip_to_domain->count: %zu\n", ctx->domain_cache->ip_to_domain->count);
+  if (pcap_setfilter(ctx->handle, ctx->bpf) == -1) {
+    fprintf(stderr, "Erreur pcap_setfilter: %s\n", pcap_geterr(ctx->handle));
+    exit(EXIT_FAILURE);
+  }
+};
 
-  char *filter = NULL;
+// PCAP + cache + filter
+void *pcap_runner_thread(void *data) {
+  context_t *ctx = (context_t *)data;
 
   // printf("thread lock\n");
   pthread_mutex_lock(&ctx->mutex2);
@@ -269,7 +272,7 @@ void *pcap_runner_thread(void *data) {
       printf("pcap is paused\n");
       pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
     }
-    printf("pcap is starting...\n");
+    printf("pcap is starting....\n");
     while (!ctx->paused) {
 
       pthread_mutex_unlock(&ctx->mutex2);

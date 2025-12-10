@@ -48,13 +48,15 @@ int main() {
   ctx->packet_queue = init_queue();
 
   init_ip_to_domain_from_db(ip_to_domain, db);
-  ctx->paused = 0;
+  ctx->paused = 1;
   printf("ctx->paused: %d\n", ctx->paused);
 
   server_args_t server_args = {.request_handler = request_handler,
                                .user_data = (unsigned char *)ctx};
 
   pthread_t *server_thread = init_server(&server_args);
+
+  init_pcap(ctx);
 
   int pcap_thread_res =
       pthread_create(&pcap_thread, NULL, pcap_runner_thread, ctx);
@@ -64,15 +66,18 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  int packet_thread_res =
-      pthread_create(&packet_thread, NULL, packet_handler_thread, ctx);
+  int packet_queue_thread_res =
+      pthread_create(&packet_thread, NULL, packet_queue_thread, ctx);
 
-  if (packet_thread_res) {
-    fprintf(stderr, "error while creating packet_thread thread!\n");
+  if (packet_queue_thread_res) {
+    fprintf(stderr, "error while creating packet_queue_thread thread!\n");
     exit(EXIT_FAILURE);
   }
 
+  // #include <unistd.h>
+  //   usleep(3000000);
   if (ip_to_domain->count > 0) {
+    printf("start pcap from main\n");
     start_pcap(ctx);
   }
 
@@ -89,7 +94,7 @@ int main() {
 
   ht_destroy(ctx->domain_cache->ip_to_domain);
   ht_destroy(ctx->sessions_table);
-
+  pcap_freecode(ctx->bpf);
   free(ctx->db);
   free(ctx->db_writer_thread);
   free(ctx);

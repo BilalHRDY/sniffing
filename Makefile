@@ -14,17 +14,20 @@ CLIENT = \
     $(wildcard lib/utils/string/*.c) \
     uds_common.c
 
-
-main:$(SERVER)
-	clang $(CFLAGS) $(SERVER) $(EXT_DEP) -o main
-	
-	
-client:$(CLIENT)
-	clang $(CFLAGS) $(CLIENT) -o client
-
 run:main
 	./main
 	
 run_client:client
 	./client
 
+main:$(SERVER)
+	clang $(CFLAGS) $(SERVER) $(EXT_DEP) -o main
+	
+client:$(CLIENT)
+	clang $(CFLAGS) $(CLIENT) -o client
+
+
+debug:main_d
+
+main_d:$(SERVER)
+	clang -g -O0 $(CFLAGS) $(SERVER) $(EXT_DEP) -o main

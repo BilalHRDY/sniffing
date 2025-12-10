@@ -14,7 +14,6 @@ queue *init_queue() {
 };
 
 void enqueue(queue *q, void *n) {
-  printf("  enqueue\n");
 
   item_c *item = malloc(sizeof(item_c));
   if (item == NULL) {

@@ -23,6 +23,7 @@ typedef struct context {
   struct bpf_program *bpf;
   pcap_t *handle;
   bpf_u_int32 *mask;
+  char *filter;
   sqlite3 *db;
   int paused;
   int has_hostnames_to_listen;
@@ -41,10 +42,14 @@ typedef struct full_packet {
   const u_char *packet;
 } full_packet_t;
 
-void *session_db_writer_thread(void *data);
 void *pcap_runner_thread(void *data);
-void *packet_handler_thread(void *data);
+void *packet_queue_thread(void *data);
 
+// pcap
+void init_pcap(context_t *ctx);
+// SNIFFING_API build_filter_from_ip_to_domain(ht *ip_to_domain, char **filter);
+
+// API
 SNIFFING_API init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);
 SNIFFING_API add_hosts_to_listen(char *domains[], int len, context_t *ctx);
 SNIFFING_API start_pcap(context_t *ctx);
