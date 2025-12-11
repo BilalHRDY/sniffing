@@ -1,32 +1,34 @@
+#include "./string_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-int extract_words(char *str, char *words[], int *words_len, int max_words) {
+STR_CODE_ERROR extract_words(char *str, char **words, int *words_len) {
 
   const char *separators = " ";
-  int word_count = 0;
+  *words_len = 0;
 
   char *str_token = strtok(str, separators);
-  if (str_token == NULL) {
-    fprintf(stderr, "str is empty!\n");
-    return 0;
+
+  words = malloc(sizeof(char *));
+  if (words == NULL) {
+    fprintf(stderr, "extract_words: malloc failed!\n");
+    return STR_CODE_MALLOC_ERR;
   }
-  do {
-    // enlever cette vérif de cette fonction
-    if (word_count == max_words) {
-      fprintf(stderr, "Too many arguments!\n");
-      return 0;
+
+  while (str_token != NULL) {
+    words = realloc(words, sizeof(char *) * (*words_len + 1));
+    if (words == NULL) {
+      fprintf(stderr, "extract_words: realloc failed!\n");
+      return STR_CODE_MALLOC_ERR;
     }
-    words[word_count++] = strdup(str_token);
-  } while ((str_token = strtok(NULL, separators)) != NULL);
-
-  *words_len = word_count;
-  for (size_t i = 0; i < word_count; i++) {
-    printf("words: %s\n", words[i]);
+    words[*(words_len)++] = strdup(str_token);
   }
+  // for (size_t i = 0; i < words_len; i++) {
+  //   printf("words: %s\n", words[i]);
+  // }
 
-  return 1;
+  return STR_CODE_OK;
 };
 
 // util

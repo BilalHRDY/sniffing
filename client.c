@@ -1,5 +1,5 @@
 #include "lib/command/cmd_serializer.h"
-#include "lib/utils/string/string.h"
+#include "lib/utils/string/string_helpers.h"
 #include "uds_common.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,10 +69,13 @@ void words_to_cmd(char *words[], int len, command_t **cmd) {
 int user_input_to_cmd(char *data, command_t **cmd) {
   char *words[MAX_WORDS];
   int words_len;
-  if (!extract_words(data, words, &words_len, MAX_WORDS)) {
+
+  extract_words(data, words, &words_len);
+  if (words_len > MAX_WORDS) {
     fprintf(stderr, "Error while extract words from input\n");
     return -1;
-  };
+  }
+
   words_to_cmd(words, words_len, cmd);
   return 0;
 }

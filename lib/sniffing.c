@@ -1,7 +1,7 @@
 #include "./sniffing.h"
 #include "./db.h"
 #include "./ip.h"
-#include "./utils/string/string.h"
+#include "./utils/string/string_helpers.h"
 #include "types.h"
 #include "utils/hashmap.h"
 #include <pthread.h>
@@ -330,7 +330,7 @@ SNIFFING_API start_pcap_with_db_check(context_t *ctx) {
   };
 
   if (!len) {
-    fprintf(stderr, "start_pcap : no hostname in db!\n");
+    fprintf(stderr, "start_pcap_with_db_check : no hostname in db!\n");
     return SNIFFING_NO_HOSTNAME_IN_DB;
   }
 

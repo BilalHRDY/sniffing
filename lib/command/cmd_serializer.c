@@ -1,3 +1,4 @@
+#include "../sniffing.h"
 #include "cmd.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +19,7 @@ int serialize_cmd(command_t *cmd, char *dest) {
   return code_len + args_len;
 }
 
-void deserialize_cmd(char *raw_cmd, int raw_cmd_len, command_t *cmd) {
+int deserialize_cmd(char *raw_cmd, int raw_cmd_len, command_t *cmd) {
   char *p;
   p = raw_cmd;
   int code_len = sizeof(cmd->code);
@@ -29,9 +30,12 @@ void deserialize_cmd(char *raw_cmd, int raw_cmd_len, command_t *cmd) {
   int args_len = raw_cmd_len - code_len;
   // printf("args_len: %d\n", args_len);
 
+  // todo: free
   cmd->raw_args = malloc(args_len);
   if (cmd->raw_args == NULL) {
     perror("deserialize_cmd: malloc failed!");
+    return 1;
   }
   memcpy(cmd->raw_args, p, args_len);
+  return 0;
 }

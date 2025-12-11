@@ -1,14 +1,15 @@
 #include "../../uds_common.h"
 #include "../types.h"
-#include "../utils/string/string.h"
+#include "../utils/string/string_helpers.h"
 #include "cmd.h"
 #include "cmd_serializer.h"
 #include <stdlib.h>
 #include <string.h>
 
 // TODO ne pas avoir de dépendance vers uds_common
-void serialize_sessions(session_stats_t *sessions, int *s_len, char *cmd_res,
-                        unsigned int max_size, unsigned int *cmd_res_size) {
+SNIFFING_API serialize_sessions(session_stats_t *sessions, int *s_len,
+                                char *cmd_res, unsigned int max_size,
+                                unsigned int *cmd_res_size) {
   printf("serialize_sessions: \n");
 
   int bytes = 0;
@@ -18,7 +19,7 @@ void serialize_sessions(session_stats_t *sessions, int *s_len, char *cmd_res,
 
     if (bytes + sizeof(int) > max_size) {
       fprintf(stderr, "serialize_sessions: buffer overflow detected!\n");
-      return;
+      return SNIFFING_INTERNAL_ERROR;
     }
     memcpy(cmd_res + bytes, &(sessions[i].hostname_len), sizeof(int));
     bytes += sizeof(int);
@@ -26,7 +27,7 @@ void serialize_sessions(session_stats_t *sessions, int *s_len, char *cmd_res,
     int full_hst_len = sessions[i].hostname_len + 1;
     if (bytes + full_hst_len > max_size) {
       fprintf(stderr, "serialize_sessions: buffer overflow detected!\n");
-      return;
+      return SNIFFING_INTERNAL_ERROR;
     }
 
     memcpy(cmd_res + bytes, sessions[i].hostname, full_hst_len);
@@ -34,7 +35,7 @@ void serialize_sessions(session_stats_t *sessions, int *s_len, char *cmd_res,
 
     if (bytes + sizeof(int) > max_size) {
       fprintf(stderr, "serialize_sessions: buffer overflow detected!\n");
-      return;
+      return SNIFFING_INTERNAL_ERROR;
     }
 
     memcpy(cmd_res + bytes, &(sessions[i].total_duration), sizeof(int));
@@ -47,60 +48,78 @@ void serialize_sessions(session_stats_t *sessions, int *s_len, char *cmd_res,
   for (size_t i = 0; i < *cmd_res_size; i++) {
     printf("cmd_res[%zu]: %c\n", i + 1, cmd_res[i]);
   }
+  return SNIFFING_OK;
 }
 
-void process_add_hosts_to_listen_cmd(char *raw_args, context_t *ctx) {
-  char *hostnames[MAX_WORDS];
+SNIFFING_API process_add_hosts_to_listen_cmd(char *raw_args, context_t *ctx) {
+  char **hostnames;
   int hostnames_len;
-  extract_words(raw_args, hostnames, &hostnames_len, MAX_WORDS);
-  add_hosts_to_listen(hostnames, hostnames_len, ctx);
+  STR_CODE_ERROR rc;
+  if (strlen(raw_args) == 0) {
+    return SNIFFING_EMPTY_ARGS;
+  }
+  rc = extract_words(raw_args, hostnames, &hostnames_len);
+  if (rc != STR_CODE_OK) {
+    return SNIFFING_INTERNAL_ERROR;
+  }
+
+  if (hostnames_len > MAX_WORDS) {
+    return SNIFFING_TOO_MANY_ARGUMENTS;
+  }
+  return add_hosts_to_listen(hostnames, hostnames_len, ctx);
 }
 
-void process_cmd(command_t *cmd, char *cmd_res, unsigned int *cmd_res_size,
-                 context_t *ctx) {
+SNIFFING_API process_cmd(command_t *cmd, char *cmd_res,
+                         unsigned int *cmd_res_size, context_t *ctx) {
+  SNIFFING_API rc;
   printf("cmd_code: %d\n", cmd->code);
   switch (cmd->code) {
   case CMD_SERVER_START:
-    start_pcap_with_db_check(ctx);
+    rc = start_pcap_with_db_check(ctx);
     break;
   case CMD_SERVER_STOP:
-    stop_pcap(ctx);
+    rc = stop_pcap(ctx);
     break;
   case CMD_HOSTNAME_LIST:
     break;
   case CMD_HOSTNAME_ADD:
-    process_add_hosts_to_listen_cmd(cmd->raw_args, ctx);
+    rc = process_add_hosts_to_listen_cmd(cmd->raw_args, ctx);
     break;
   case CMD_GET_STATS: {
     printf("process_cmd\n");
     session_stats_t *s = NULL;
     int s_len;
     // unsigned char *data_res;
-    get_stats(ctx, &s, &s_len);
-    serialize_sessions(s, &s_len, cmd_res, DATA_SIZE - sizeof(CMD_CODE),
-                       cmd_res_size);
+    rc = get_stats(ctx, &s, &s_len);
+    rc = serialize_sessions(s, &s_len, cmd_res, DATA_SIZE - sizeof(CMD_CODE),
+                            cmd_res_size);
 
   } break;
   default:
     fprintf(stderr, "Command not known!\n");
+    rc = SNIFFING_COMMAND_NOT_KNOWN;
     break;
   }
+  return rc;
 };
 
-void process_raw_cmd(char *raw_cmd, int raw_cmd_len, char *cmd_res,
-                     unsigned int *cmd_res_size, unsigned char *user_data) {
+SNIFFING_API process_raw_cmd(char *raw_cmd, int raw_cmd_len, char *cmd_res,
+                             unsigned int *cmd_res_size,
+                             unsigned char *user_data) {
   printf("process_raw_cmd\n");
 
   context_t *ctx = (context_t *)user_data;
   command_t cmd;
 
-  deserialize_cmd(raw_cmd, raw_cmd_len, &cmd);
+  if (!deserialize_cmd(raw_cmd, raw_cmd_len, &cmd)) {
+    return SNIFFING_INTERNAL_ERROR;
+  }
   printf("code: %d\n", cmd.code);
 
   memcpy(cmd_res, &(cmd.code), sizeof(CMD_CODE));
   *cmd_res_size = sizeof(CMD_CODE);
 
-  process_cmd(&cmd, cmd_res + sizeof(CMD_CODE), cmd_res_size, ctx);
+  return process_cmd(&cmd, cmd_res + sizeof(CMD_CODE), cmd_res_size, ctx);
   // process_cmd(&cmd, cmd_res + sizeof(int), cmd_res_size, ctx);
   // for (size_t i = 0; i < *cmd_res_size; i++) {
   //   printf("cmd_res[%zu]: %c\n", i + 1, (cmd_res)[0][i]);
