@@ -37,19 +37,19 @@ void *socket_server_thread(void *data) {
 
     while ((req_len = read(cfd, buf, sizeof(buf))) > 0) {
       uds_request_t res;
-      STATUS_CODE rc;
+      SOCKET_STATUS_CODE rc;
 
       if ((rc = verify_packet(buf, req_len)) != STATUS_OK) {
         res.header.response_status = rc;
         res.header.body_len = 0;
-      }
-
-      else {
+      } else {
         printf("req_len: %zu\n", req_len);
         uds_request_t *req = malloc(req_len);
 
         memcpy(req, buf, req_len);
         handler(req, &res, user_data);
+        res.header.response_status = STATUS_OK;
+
         free(req);
       }
       ssize_t r = write(cfd, &res, sizeof(header_t) + res.header.body_len);

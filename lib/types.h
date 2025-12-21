@@ -51,7 +51,8 @@ void init_pcap(context_t *ctx);
 
 // API
 SNIFFING_API init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);
-SNIFFING_API add_hosts_to_listen(char *domains[], int len, context_t *ctx);
+SNIFFING_API add_hosts_to_listen(char *domains[], int len,
+                                 char *domain_in_error, context_t *ctx);
 SNIFFING_API start_pcap(context_t *ctx);
 SNIFFING_API start_pcap_with_db_check(context_t *ctx);
 SNIFFING_API stop_pcap(context_t *ctx);

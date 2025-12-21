@@ -161,31 +161,57 @@ void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
 
     (*st)->sessions_len++;
   };
+}
 
-  // printf("(*st)->sessions[0]: %p\n", (*st)->sessions[1]);
-  // printf("(*st)->sessions_len: %d\n", (*st)->sessions_len);
-  // // session_stats_t *sessions_stats[];
-  // for (size_t i = 0; i < (*st)->sessions_len; i++) {
-  //   printf("deserialize_sessions has_null_terminator: %d\n",
-  //          has_null_terminator(((*st)->sessions[i])->hostname));
-  //   printf("deserialize_sessions: s->hostname_len: %d\n",
-  //          ((*st)->sessions[i])->hostname_len);
-  //   printf("deserialize_sessions: s->hostname and size: %s %zu\n",
-  //          ((*st)->sessions[i])->hostname,
-  //          strlen(((*st)->sessions[i])->hostname));
-  //   printf("deserialize_sessions:s->total_duration: %d\n",
-  //          ((*st)->sessions[i])->total_duration);
-  // }
+void handle_server_error(SNIFFING_API code_res, CMD_CODE initial_cmd,
+                         char *message) {
+  switch (code_res) {
+  case SNIFFING_TOO_MANY_ARGUMENTS:
+    printf("Too many arguments provided!\n");
+    break;
+  case SNIFFING_EMPTY_ARGS:
+    if (initial_cmd == CMD_HOSTNAME_ADD) {
+      printf("Please provide arguments for command \"hostname add\".\n");
+      break;
+    }
+    printf("Please provide arguments for command.\n");
+    break;
+  case SNIFFING_COMMAND_NOT_KNOWN:
+    printf("Command not known.\n");
+    break;
+  case SNIFFING_HOSTNAME_NOT_KNOWN:
+    printf("hostname \"%s\" is not known\n", message);
+    break;
+  case SNIFFING_NO_HOSTNAME_IN_DB:
+    printf("SNIFFING_NO_HOSTNAME_IN_DB\n");
+    break;
+  case SNIFFING_INTERNAL_ERROR:
+  case SNIFFING_MEMORY_ERROR:
+  default:
+    fprintf(stderr, "Internal error from server!\n");
+    break;
+  }
 }
 
 void handle_response(uds_request_t *res) {
   // res_message_t *res_message;
 
-  // TODO essayer CMD_CODE code_res = *(CMD_CODE *)res;
-  CMD_CODE code_res;
-  memcpy(&code_res, res->body, sizeof(CMD_CODE));
-  printf("code_res: %d\n", code_res);
-  switch (code_res) {
+  // TODO essayer CMD_CODE initial_cmd = *(CMD_CODE *)res;
+  SNIFFING_API code_res;
+  memcpy(&code_res, res->body, sizeof(SNIFFING_API));
+  printf("handle_response: code_res: %d\n", code_res);
+
+  CMD_CODE initial_cmd;
+  memcpy(&initial_cmd, res->body + sizeof(SNIFFING_API), sizeof(CMD_CODE));
+  printf("handle_response: initial_cmd: %d\n", initial_cmd);
+
+  if (code_res != SNIFFING_OK) {
+    handle_server_error(code_res, initial_cmd,
+                        res->body + sizeof(SNIFFING_API) + sizeof(CMD_CODE));
+    return;
+  }
+
+  switch (initial_cmd) {
   case CMD_SERVER_START:
     printf("CMD_SERVER_START\n");
     break;
@@ -201,8 +227,10 @@ void handle_response(uds_request_t *res) {
   case CMD_GET_STATS: {
     printf("CMD_GET_STATS\n");
     session_store_t *st;
-    deserialize_sessions(res->body + sizeof(CMD_CODE),
-                         res->header.body_len - sizeof(CMD_CODE), &st);
+    int raw_sessions_len =
+        res->header.body_len - sizeof(SNIFFING_API) - sizeof(CMD_CODE);
+    deserialize_sessions(res->body + sizeof(SNIFFING_API) + sizeof(CMD_CODE),
+                         raw_sessions_len, &st);
     print_sessions(st);
   } break;
   default:
@@ -214,17 +242,15 @@ void handle_response(uds_request_t *res) {
 int client_send_request(int sfd, uds_request_t *req) {
 
   ssize_t req_len = sizeof(header_t) + req->header.body_len;
-  // printf("sizeof(body_len): %u\n", req->header.body_len);
-  // printf("sizeof(req_len): %zu\n", req_len);
   ssize_t count = write(sfd, req, req_len);
   // printf("count: %zd\n", count);
   if (count != req_len) {
-
     perror("Error writing to socket");
     return 0;
   }
   char buf[BUF_SIZE];
   ssize_t res_len = read(sfd, buf, sizeof(buf));
+  printf("RESPONSE: \n");
   int rc;
   if ((rc = verify_packet(buf, res_len)) != STATUS_OK) {
     return rc;
@@ -234,19 +260,21 @@ int client_send_request(int sfd, uds_request_t *req) {
   uds_request_t *res = malloc(res_len);
 
   memcpy(res, buf, res_len);
-  handle_response(res);
+  if (res->header.response_status != STATUS_OK) {
+    printf("Error from socket server!\n");
+  } else {
+    handle_response(res);
+  }
   free(res);
   return 0;
 }
 
-STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len) {
+SOCKET_STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len) {
   header_t *h = (header_t *)buf;
   if (pck_len != sizeof(header_t) + h->body_len) {
     printf("pck_len: %zu\n", pck_len);
     printf("sizeof(header_t): %zu\n", sizeof(header_t));
-
     printf("h->body_len: %d\n", h->body_len);
-
     fprintf(stderr, "verify_packet : Invalid length of packet\n");
 
     return STATUS_INVALID_PACKET_LENGTH;

@@ -1,3 +1,4 @@
+#include "ip.h"
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdio.h>
@@ -5,7 +6,7 @@
 #include <string.h>
 
 // ip
-int fetch_host_ip(const char *domain, struct addrinfo **res) {
+IP_CODE fetch_host_ip(const char *domain, struct addrinfo **res) {
   struct addrinfo hints;
   int status;
   char ipstr[INET6_ADDRSTRLEN], ipver;
@@ -16,11 +17,14 @@ int fetch_host_ip(const char *domain, struct addrinfo **res) {
                                    //   printf("domain: %s\n", domain);
 
   if ((status = getaddrinfo(domain, NULL, &hints, res)) != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-    return status;
+    fprintf(stderr, "getaddrinfo: %s, %d\n", gai_strerror(status), status);
+    if (status == EAI_NONAME) {
+      return IP_HOSTNAME_NOT_KNOWN;
+    }
+    return IP_ERROR;
   }
 
-  return 0;
+  return IP_OK;
 };
 
 // ip

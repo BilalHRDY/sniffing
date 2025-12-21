@@ -10,11 +10,11 @@
 typedef enum {
   STATUS_OK = 0,
   STATUS_INVALID_PACKET_LENGTH,
-} STATUS_CODE;
+} SOCKET_STATUS_CODE;
 
 typedef struct header {
   unsigned int body_len;
-  STATUS_CODE response_status;
+  SOCKET_STATUS_CODE response_status;
 } header_t;
 
 typedef struct uds_request {
@@ -22,7 +22,7 @@ typedef struct uds_request {
   char body[DATA_SIZE];
 } BYTE_ALIGNED uds_request_t;
 
-STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t req_len);
+SOCKET_STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t req_len);
 int client_send_request(int sfd, uds_request_t *req);
 
 #endif

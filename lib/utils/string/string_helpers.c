@@ -3,29 +3,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-STR_CODE_ERROR extract_words(char *str, char **words, int *words_len) {
+STR_CODE_ERROR extract_words(char *str, char ***words, int *words_len) {
 
   const char *separators = " ";
   *words_len = 0;
 
   char *str_token = strtok(str, separators);
 
-  words = malloc(sizeof(char *));
-  if (words == NULL) {
-    fprintf(stderr, "extract_words: malloc failed!\n");
-    return STR_CODE_MALLOC_ERR;
-  }
-
   while (str_token != NULL) {
-    words = realloc(words, sizeof(char *) * (*words_len + 1));
-    if (words == NULL) {
+    *words = realloc(*words, sizeof(char *) * (*words_len + 1));
+    if (*words == NULL) {
       fprintf(stderr, "extract_words: realloc failed!\n");
       return STR_CODE_MALLOC_ERR;
     }
-    words[*(words_len)++] = strdup(str_token);
+    (*words)[(*words_len)++] = strdup(str_token);
+
+    str_token = strtok(NULL, separators);
   }
-  // for (size_t i = 0; i < words_len; i++) {
-  //   printf("words: %s\n", words[i]);
+  // for (size_t i = 0; i < *words_len; i++) {
+  //   printf("words: %s\n", (*words)[i]);
   // }
 
   return STR_CODE_OK;
@@ -55,7 +51,7 @@ int has_null_terminator(const char *s) {
 int strings_equal(char *s1, char *s2) { return strcmp(s1, s2) == 0; }
 
 char *string_list_to_string(char *list[], unsigned int len) {
-
+  printf("string_list_to_string\n");
   size_t total_len = 1; // '\0'
   for (size_t i = 0; i < len; i++) {
     total_len += strlen(list[i]);

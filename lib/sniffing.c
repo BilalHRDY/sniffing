@@ -168,7 +168,8 @@ SNIFFING_API build_filter_from_ip_to_domain(ht *ip_to_domain, char **filter) {
 
 // cache + db + ip
 SNIFFING_API update_ip_domain_table(ht *ip_to_domain, int domains_len,
-                                    char *domains[], sqlite3 *db) {
+                                    char *domains[], char *domain_in_err,
+                                    sqlite3 *db) {
   struct addrinfo *res;
   char ipstr[INET6_ADDRSTRLEN];
   void *addr;
@@ -189,9 +190,10 @@ SNIFFING_API update_ip_domain_table(ht *ip_to_domain, int domains_len,
     }
     // TODO vérifier avec une regex le domaine
     status = fetch_host_ip(domains[i], &res);
-    if (status != 0) {
+    if (status != IP_OK) {
       free(hostnames);
-      if (status == EAI_NONAME) {
+      if (status == IP_HOSTNAME_NOT_KNOWN) {
+        memcpy(domain_in_err, domains[i], strlen(domains[i]));
         return SNIFFING_HOSTNAME_NOT_KNOWN;
       } else {
         return SNIFFING_INTERNAL_ERROR;
@@ -287,12 +289,13 @@ void *pcap_runner_thread(void *data) {
 }
 
 // PCAP + cache + filter
-SNIFFING_API add_hosts_to_listen(char *domains[], int len, context_t *ctx) {
+SNIFFING_API add_hosts_to_listen(char *domains[], int len,
+                                 char *domain_in_error, context_t *ctx) {
   ht *ip_to_domain = ctx->domain_cache->ip_to_domain;
   SNIFFING_API rc;
   char *filter;
-  if ((rc = update_ip_domain_table(ip_to_domain, len, domains, ctx->db)) !=
-      SNIFFING_OK) {
+  if ((rc = update_ip_domain_table(ip_to_domain, len, domains, domain_in_error,
+                                   ctx->db)) != SNIFFING_OK) {
     return rc;
   }
 
@@ -403,9 +406,9 @@ SNIFFING_API build_ip_domain_table(ht *ip_to_domain, int domains_len,
     // TODO vérifier avec une regex le domaine
     // printf("domain: %s\n", domains[i]);
     status = fetch_host_ip(domains[i], &res);
-    if (status != 0) {
+    if (status != IP_OK) {
       freeaddrinfo(res);
-      if (status == EAI_NONAME) {
+      if (status == IP_HOSTNAME_NOT_KNOWN) {
         return SNIFFING_HOSTNAME_NOT_KNOWN;
       } else {
         return SNIFFING_INTERNAL_ERROR;
@@ -446,48 +449,50 @@ SNIFFING_API init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db) {
 }
 
 // ip + pcap
-SNIFFING_API init_ip_to_domain_and_filter(domain_cache_t *cache,
-                                          char *domains[], char **filter) {
-  struct addrinfo *res;
-  char ipstr[INET6_ADDRSTRLEN];
-  void *addr;
-  int status;
+// SNIFFING_API init_ip_to_domain_and_filter(domain_cache_t *cache,
+//                                           char *domains[], char **filter,
+//                                           char *domain_in_err) {
+//   struct addrinfo *res;
+//   char ipstr[INET6_ADDRSTRLEN];
+//   void *addr;
+//   int status;
 
-  // TODO enlever strdup ?
-  *filter = strdup("ip or ip6 and (dst host ");
+//   // TODO enlever strdup ?
+//   *filter = strdup("ip or ip6 and (dst host ");
 
-  char *separator = " or dst host ";
-  int is_last_ip = 0;
-  for (size_t i = 0; domains[i] != NULL; i++) {
+//   char *separator = " or dst host ";
+//   int is_last_ip = 0;
+//   for (size_t i = 0; domains[i] != NULL; i++) {
 
-    printf("domain: %s\n", domains[i]);
-    status = fetch_host_ip(domains[i], &res);
-    if (status != 0) {
-      if (status == EAI_NONAME) {
-        return SNIFFING_HOSTNAME_NOT_KNOWN;
-      } else {
-        return SNIFFING_INTERNAL_ERROR;
-      }
-    }
+//     printf("domain: %s\n", domains[i]);
+//     status = fetch_host_ip(domains[i], &res);
+//     if (status != IP_OK) {
+//       domain_in_err = domains[i];
+//       if (status == IP_HOSTNAME_NOT_KNOWN) {
+//         return SNIFFING_HOSTNAME_NOT_KNOWN;
+//       } else {
+//         return SNIFFING_INTERNAL_ERROR;
+//       }
+//     }
 
-    cache->hostnames[i] = strdup(domains[i]);
-    struct addrinfo *p = res;
+//     cache->hostnames[i] = strdup(domains[i]);
+//     struct addrinfo *p = res;
 
-    while (p != NULL) {
-      addr = get_ip_from_addrinfo(p);
-      inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
-      ht_set(cache->ip_to_domain, ipstr, domains[i]);
+//     while (p != NULL) {
+//       addr = get_ip_from_addrinfo(p);
+//       inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
+//       ht_set(cache->ip_to_domain, ipstr, domains[i]);
 
-      is_last_ip = domains[i + 1] == NULL && p->ai_next == NULL;
-      add_ip_in_filter(ipstr, filter, separator, is_last_ip);
+//       is_last_ip = domains[i + 1] == NULL && p->ai_next == NULL;
+//       add_ip_in_filter(ipstr, filter, separator, is_last_ip);
 
-      p = p->ai_next;
-    }
-    freeaddrinfo(res);
-  }
-  // for (size_t i = 0; i < count; i++) {
-  //   printf(" cache->hostnames[i]: %s\n", cache->hostnames[i]);
-  // }
-  // printf("filter: %s\n", *filter);
-  return SNIFFING_OK;
-}
+//       p = p->ai_next;
+//     }
+//     freeaddrinfo(res);
+//   }
+//   // for (size_t i = 0; i < count; i++) {
+//   //   printf(" cache->hostnames[i]: %s\n", cache->hostnames[i]);
+//   // }
+//   // printf("filter: %s\n", *filter);
+//   return SNIFFING_OK;
+// }

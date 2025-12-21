@@ -51,14 +51,20 @@ SNIFFING_API serialize_sessions(session_stats_t *sessions, int *s_len,
   return SNIFFING_OK;
 }
 
-SNIFFING_API process_add_hosts_to_listen_cmd(char *raw_args, context_t *ctx) {
-  char **hostnames;
-  int hostnames_len;
-  STR_CODE_ERROR rc;
+SNIFFING_API process_add_hosts_to_listen_cmd(char *raw_args, char *cmd_res,
+                                             context_t *ctx) {
   if (strlen(raw_args) == 0) {
+    printf("SNIFFING_EMPTY_ARGS\n");
     return SNIFFING_EMPTY_ARGS;
   }
-  rc = extract_words(raw_args, hostnames, &hostnames_len);
+  char **hostnames = malloc(sizeof(char *));
+  if (hostnames == NULL) {
+    fprintf(stderr, "process_add_hosts_to_listen_cmd: malloc failed!\n");
+    return SNIFFING_MEMORY_ERROR;
+  }
+
+  int hostnames_len;
+  STR_CODE_ERROR rc = extract_words(raw_args, &hostnames, &hostnames_len);
   if (rc != STR_CODE_OK) {
     return SNIFFING_INTERNAL_ERROR;
   }
@@ -66,7 +72,7 @@ SNIFFING_API process_add_hosts_to_listen_cmd(char *raw_args, context_t *ctx) {
   if (hostnames_len > MAX_WORDS) {
     return SNIFFING_TOO_MANY_ARGUMENTS;
   }
-  return add_hosts_to_listen(hostnames, hostnames_len, ctx);
+  return add_hosts_to_listen(hostnames, hostnames_len, cmd_res, ctx);
 }
 
 SNIFFING_API process_cmd(command_t *cmd, char *cmd_res,
@@ -83,7 +89,9 @@ SNIFFING_API process_cmd(command_t *cmd, char *cmd_res,
   case CMD_HOSTNAME_LIST:
     break;
   case CMD_HOSTNAME_ADD:
-    rc = process_add_hosts_to_listen_cmd(cmd->raw_args, ctx);
+    rc = process_add_hosts_to_listen_cmd(cmd->raw_args, cmd_res, ctx);
+    *cmd_res_size += strlen(cmd_res);
+    // printf("cmd_res: %s, %zu\n", cmd_res, strlen(cmd_res));
     break;
   case CMD_GET_STATS: {
     printf("process_cmd\n");
@@ -91,6 +99,9 @@ SNIFFING_API process_cmd(command_t *cmd, char *cmd_res,
     int s_len;
     // unsigned char *data_res;
     rc = get_stats(ctx, &s, &s_len);
+    if (rc != SNIFFING_OK) {
+      return rc;
+    }
     rc = serialize_sessions(s, &s_len, cmd_res, DATA_SIZE - sizeof(CMD_CODE),
                             cmd_res_size);
 
@@ -106,19 +117,17 @@ SNIFFING_API process_cmd(command_t *cmd, char *cmd_res,
 SNIFFING_API process_raw_cmd(char *raw_cmd, int raw_cmd_len, char *cmd_res,
                              unsigned int *cmd_res_size,
                              unsigned char *user_data) {
-  printf("process_raw_cmd\n");
-
   context_t *ctx = (context_t *)user_data;
   command_t cmd;
 
-  if (!deserialize_cmd(raw_cmd, raw_cmd_len, &cmd)) {
+  if (deserialize_cmd(raw_cmd, raw_cmd_len, &cmd) != DESERIALIZATION_OK) {
     return SNIFFING_INTERNAL_ERROR;
   }
+
   printf("code: %d\n", cmd.code);
 
   memcpy(cmd_res, &(cmd.code), sizeof(CMD_CODE));
   *cmd_res_size = sizeof(CMD_CODE);
-
   return process_cmd(&cmd, cmd_res + sizeof(CMD_CODE), cmd_res_size, ctx);
   // process_cmd(&cmd, cmd_res + sizeof(int), cmd_res_size, ctx);
   // for (size_t i = 0; i < *cmd_res_size; i++) {

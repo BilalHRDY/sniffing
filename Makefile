@@ -26,8 +26,16 @@ main:$(SERVER)
 client:$(CLIENT)
 	clang $(CFLAGS) $(CLIENT) -o client
 
-
-debug:main_d
+# server debug
+debug_main:main_d
+	lldb ./main
 
 main_d:$(SERVER)
 	clang -g -O0 $(CFLAGS) $(SERVER) $(EXT_DEP) -o main
+    
+# client debug
+debug_client:client_d
+	lldb ./client
+
+client_d:$(CLIENT)
+	clang -g -O0 $(CFLAGS) $(CLIENT) -o client
