@@ -15,6 +15,7 @@ typedef enum {
   CLIENT_OK = 0,
   CLIENT_ERROR,
   CLIENT_MISSING_VERB,
+  CLIENT_UNKNOWN_CMD,
 } CLIENT_CODE;
 
 typedef struct {
@@ -60,8 +61,12 @@ CLIENT_CODE words_to_cmd(char *words[], int len, command_t **cmd) {
       if (args_len > 0) {
         (*cmd)->raw_args = string_list_to_string(words + 2, args_len);
       }
+
     } else if (strings_equal(words[1], "list")) {
       (*cmd)->code = CMD_HOSTNAME_LIST;
+    } else {
+      printf("Unknown command!\n");
+      return CLIENT_UNKNOWN_CMD;
     }
 
   } else if (strings_equal(verb, "server")) {
@@ -74,12 +79,16 @@ CLIENT_CODE words_to_cmd(char *words[], int len, command_t **cmd) {
 
     } else if (strings_equal(words[1], "stop")) {
       (*cmd)->code = CMD_SERVER_STOP;
+    } else {
+      printf("Unknown command!\n");
+      return CLIENT_UNKNOWN_CMD;
     }
   } else if (strings_equal(verb, "stats")) {
     (*cmd)->code = CMD_GET_STATS;
 
   } else {
-    (*cmd)->code = CMD_NOT_KNOWN;
+    printf("Unknown command!\n");
+    return CLIENT_UNKNOWN_CMD;
   }
   return CLIENT_OK;
 }

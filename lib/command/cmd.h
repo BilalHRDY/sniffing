@@ -9,8 +9,6 @@ typedef enum {
   CMD_HOSTNAME_LIST,
   CMD_HOSTNAME_ADD,
   CMD_GET_STATS,
-
-  CMD_NOT_KNOWN,
 } CMD_CODE;
 
 typedef struct command {
