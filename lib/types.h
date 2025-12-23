@@ -1,5 +1,6 @@
 #ifndef TYPES_H
 #define TYPES_H
+#include "request_handler.h"
 #include "sniffing.h"
 #include "utils/hashmap.h"
 #include "utils/queue.h"
@@ -35,6 +36,7 @@ typedef struct context {
   domain_cache_t *domain_cache;
   ht *sessions_table;
   queue *packet_queue;
+  request_handler_t request_handler;
 } context_t;
 
 typedef struct full_packet {

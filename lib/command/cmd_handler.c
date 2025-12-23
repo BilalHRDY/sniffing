@@ -1,4 +1,4 @@
-#include "../../uds_common.h"
+#include "../../protocol.h"
 #include "../types.h"
 #include "../utils/string/string_helpers.h"
 #include "cmd.h"
@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO ne pas avoir de dépendance vers uds_common
+// TODO ne pas avoir de dépendance vers protocol
 SNIFFING_API serialize_sessions(session_stats_t *sessions, int *s_len,
                                 char *cmd_res, unsigned int max_size,
                                 unsigned int *cmd_res_size) {

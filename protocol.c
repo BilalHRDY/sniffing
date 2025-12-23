@@ -1,7 +1,10 @@
-#include "uds_common.h"
+#include "protocol.h"
 #include "lib/command/cmd.h"
+#include "lib/request_handler.h"
+#include "lib/server/socket_server.h"
 #include "lib/types.h"
 #include "lib/utils/string/dynamic_string.h"
+#include "lib/utils/string/string_helpers.h"
 #include <malloc/malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,27 +25,7 @@ typedef struct res_message {
   char message[MSG_SIZE];
 } res_message_t;
 
-char *format_duration(int timestamp) {
-  int days_count = timestamp / 86400;
-  int rest = timestamp % 86400;
-
-  int hours_count = rest / 3600;
-  rest = timestamp % 3600;
-
-  int min_count = rest / 60;
-  int sec_count = timestamp % 60;
-
-  // TODO free
-  char *output = malloc(16);
-
-  sprintf(output, "%dd %dh %dm %ds", days_count, hours_count, min_count,
-          sec_count);
-  // for (size_t i = 0; output[i] != '\0'; i++) {
-  //   printf("time[%zu]: %c\n", i, output[i]);
-  // }
-  return output;
-}
-
+// output
 void add_column(dynamic_string_t *dest, int col_width, char *text,
                 int add_end_separator) {
   add_to_ds(dest, "*");
@@ -69,6 +52,7 @@ void add_column(dynamic_string_t *dest, int col_width, char *text,
   }
 }
 
+// output + sessions
 void print_sessions(session_store_t *st) {
   char buffer[32];
   dynamic_string_t *output = malloc(sizeof(dynamic_string_t));
@@ -119,6 +103,7 @@ void print_sessions(session_store_t *st) {
   // printf("size output: %zu\n", strlen(output));
 }
 
+// sessions
 void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
                           session_store_t **st) {
   printf("body len: %d\n", raw_sessions_len);
@@ -163,6 +148,7 @@ void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
   };
 }
 
+// sniffing + output + cmd
 void handle_server_error(SNIFFING_API code_res, CMD_CODE initial_cmd,
                          char *message) {
   switch (code_res) {
@@ -193,6 +179,7 @@ void handle_server_error(SNIFFING_API code_res, CMD_CODE initial_cmd,
   }
 }
 
+// cmd + req
 void handle_response(uds_request_t *res) {
   // res_message_t *res_message;
 
@@ -238,10 +225,24 @@ void handle_response(uds_request_t *res) {
     break;
   }
 }
+// request
+static SOCKET_STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len) {
+  header_t *h = (header_t *)buf;
+  if (pck_len != sizeof(header_t) + h->body_len) {
+    printf("pck_len: %zu\n", pck_len);
+    printf("sizeof(header_t): %zu\n", sizeof(header_t));
+    printf("h->body_len: %d\n", h->body_len);
+    fprintf(stderr, "verify_packet : Invalid length of packet\n");
 
+    return STATUS_INVALID_PACKET_LENGTH;
+  }
+  return STATUS_OK;
+}
+// request
 int client_send_request(int sfd, uds_request_t *req) {
 
   ssize_t req_len = sizeof(header_t) + req->header.body_len;
+  // write fait pas parti de uds mais de socket
   ssize_t count = write(sfd, req, req_len);
   // printf("count: %zd\n", count);
   if (count != req_len) {
@@ -269,15 +270,28 @@ int client_send_request(int sfd, uds_request_t *req) {
   return 0;
 }
 
-SOCKET_STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len) {
-  header_t *h = (header_t *)buf;
-  if (pck_len != sizeof(header_t) + h->body_len) {
-    printf("pck_len: %zu\n", pck_len);
-    printf("sizeof(header_t): %zu\n", sizeof(header_t));
-    printf("h->body_len: %d\n", h->body_len);
-    fprintf(stderr, "verify_packet : Invalid length of packet\n");
+res_data_t *handle_client_connection(char buf[BUF_SIZE], ssize_t req_len,
+                                     unsigned char *user_data) {
 
-    return STATUS_INVALID_PACKET_LENGTH;
+  uds_request_t *res = malloc(sizeof(uds_request_t));
+  SOCKET_STATUS_CODE rc;
+
+  if ((rc = verify_packet(buf, req_len)) != STATUS_OK) {
+    res->header.response_status = rc;
+    res->header.body_len = 0;
+  } else {
+    printf("req_len: %zu\n", req_len);
+    uds_request_t *req = malloc(req_len);
+
+    memcpy(req, buf, req_len);
+    // TODO enlever dep vers request_handler ?
+    request_handler(req, res, user_data);
+    res->header.response_status = STATUS_OK;
+
+    free(req);
   }
-  return STATUS_OK;
+  res_data_t *res_data = malloc(sizeof(res_data_t));
+  res_data->res = (unsigned char *)res;
+  res_data->res_len = sizeof(header_t) + res->header.body_len;
+  return res_data;
 }

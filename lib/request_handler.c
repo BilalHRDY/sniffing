@@ -1,3 +1,4 @@
+#include "request_handler.h"
 #include "command/cmd_handler.h"
 #include <stdio.h>
 #include <string.h>

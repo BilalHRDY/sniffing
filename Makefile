@@ -5,14 +5,16 @@ SERVER = \
     $(wildcard lib/*.c) \
     $(wildcard lib/command/*.c) \
     $(wildcard lib/utils/*.c) \
+    $(wildcard lib/server/*.c) \
     $(wildcard lib/utils/string/*.c) \
-    uds_common.c
+    protocol.c
 	
 CLIENT = \
     client.c \
     lib/command/cmd_serializer.c \
+    lib/request_handler.c \
     $(wildcard lib/utils/string/*.c) \
-    uds_common.c
+    protocol.c
 
 run:main
 	./main

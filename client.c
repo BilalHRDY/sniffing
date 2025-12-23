@@ -1,6 +1,6 @@
 #include "lib/command/cmd_serializer.h"
 #include "lib/utils/string/string_helpers.h"
-#include "uds_common.h"
+#include "protocol.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +24,7 @@ typedef struct {
   ssize_t input_length;
 } input_buffer_t;
 
+// input terminal + cmd
 CLIENT_CODE words_to_cmd(char *words[], int len, command_t **cmd) {
   printf("words_to_cmd\n");
   *cmd = malloc(sizeof(command_t));
@@ -93,6 +94,7 @@ CLIENT_CODE words_to_cmd(char *words[], int len, command_t **cmd) {
   return CLIENT_OK;
 }
 
+// input terminal + cmd
 CLIENT_CODE user_input_to_cmd(char *data, command_t **cmd) {
   char **words = malloc(sizeof(char *));
   if (words == NULL) {
@@ -112,6 +114,7 @@ CLIENT_CODE user_input_to_cmd(char *data, command_t **cmd) {
   return CLIENT_OK;
 }
 
+// request + cmd
 CLIENT_CODE init_client_request(char *input, uds_request_t *req) {
   printf("init_client_request\n");
   command_t *cmd;
@@ -133,6 +136,7 @@ input_buffer_t new_input_buffer() {
   return input_buf;
 }
 
+// input
 void read_input(input_buffer_t *input_buf) {
   ssize_t bytes_read =
       getline(&(input_buf->buffer), &(input_buf->buffer_length), stdin);
@@ -179,7 +183,7 @@ int main(int argc, char *argv[]) {
     if (input_buf.input_length == 0) {
       continue;
     }
-    if (strlen(input_buf.buffer) + 1 > DATA_SIZE) {
+    if (strlen(input_buf.buffer) + 1 > INPUT_MAX_SIZE) {
       fprintf(stderr, "Message is too long!\n");
       continue;
     }

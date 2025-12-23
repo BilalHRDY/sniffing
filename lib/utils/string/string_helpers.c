@@ -72,3 +72,24 @@ char *string_list_to_string(char *list[], unsigned int len) {
   printf("has_null_terminator: %d\n", has_null_terminator(res));
   return res;
 }
+
+char *format_duration(int timestamp) {
+  int days_count = timestamp / 86400;
+  int rest = timestamp % 86400;
+
+  int hours_count = rest / 3600;
+  rest = timestamp % 3600;
+
+  int min_count = rest / 60;
+  int sec_count = timestamp % 60;
+
+  // TODO free
+  char *output = malloc(16);
+
+  sprintf(output, "%dd %dh %dm %ds", days_count, hours_count, min_count,
+          sec_count);
+  // for (size_t i = 0; output[i] != '\0'; i++) {
+  //   printf("time[%zu]: %c\n", i, output[i]);
+  // }
+  return output;
+}

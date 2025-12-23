@@ -1,6 +1,6 @@
 #include "lib/db.h"
 #include "lib/request_handler.h"
-#include "lib/socket_server.h"
+#include "lib/server/socket_server.h"
 #include "lib/types.h"
 #include <arpa/inet.h>
 #include <pcap/pcap.h>
@@ -46,12 +46,14 @@ int main() {
 
   ctx->sessions_table = ht_create();
   ctx->packet_queue = init_queue();
+  ctx->request_handler = request_handler;
 
   init_ip_to_domain_from_db(ip_to_domain, db);
   ctx->paused = 1;
   printf("ctx->paused: %d\n", ctx->paused);
 
-  server_args_t server_args = {.request_handler = request_handler,
+  server_args_t server_args = {.handle_client_connection =
+                                   handle_client_connection,
                                .user_data = (unsigned char *)ctx};
 
   pthread_t *server_thread = init_server(&server_args);
