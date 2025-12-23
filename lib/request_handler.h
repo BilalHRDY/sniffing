@@ -7,7 +7,4 @@
 void request_handler(uds_request_t *req, uds_request_t *res,
                      unsigned char *ctx);
 
-typedef void (*request_handler_t)(uds_request_t *req, uds_request_t *res,
-                                  unsigned char *user_data);
-
 #endif

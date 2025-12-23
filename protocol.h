@@ -23,10 +23,15 @@ typedef struct uds_request {
   char body[DATA_SIZE];
 } BYTE_ALIGNED uds_request_t;
 
-// SOCKET_STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t req_len);s
+typedef void (*request_handler_t)(uds_request_t *req, uds_request_t *res,
+                                  unsigned char *user_data);
+typedef struct handler_ctx {
+  request_handler_t request_handler;
+  unsigned char *user_data;
+} handler_ctx_t;
 
 int client_send_request(int sfd, uds_request_t *req);
 res_data_t *handle_client_connection(char buf[BUF_SIZE], ssize_t req_len,
-                                     unsigned char *user_data);
+                                     void *handler_ctx);
 
 #endif

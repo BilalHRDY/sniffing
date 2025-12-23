@@ -1,6 +1,5 @@
 #include "protocol.h"
 #include "lib/command/cmd.h"
-#include "lib/request_handler.h"
 #include "lib/server/socket_server.h"
 #include "lib/types.h"
 #include "lib/utils/string/dynamic_string.h"
@@ -270,8 +269,18 @@ int client_send_request(int sfd, uds_request_t *req) {
   return 0;
 }
 
+typedef struct handler_ctx_t {
+  unsigned char *res;
+  ssize_t res_len;
+} handler_ctx;
+
+// TODO: faire pthread_create =>  avoir un argument pour passer la fonction
+// void request_handler et un autre pour les données qui seront passées à
+// request_handler.
 res_data_t *handle_client_connection(char buf[BUF_SIZE], ssize_t req_len,
-                                     unsigned char *user_data) {
+                                     void *data) {
+  handler_ctx_t *handler_ctx = (handler_ctx_t *)data;
+  request_handler_t request_handler = handler_ctx->request_handler;
 
   uds_request_t *res = malloc(sizeof(uds_request_t));
   SOCKET_STATUS_CODE rc;
@@ -285,7 +294,8 @@ res_data_t *handle_client_connection(char buf[BUF_SIZE], ssize_t req_len,
 
     memcpy(req, buf, req_len);
     // TODO enlever dep vers request_handler ?
-    request_handler(req, res, user_data);
+
+    request_handler(req, res, handler_ctx->user_data);
     res->header.response_status = STATUS_OK;
 
     free(req);

@@ -12,12 +12,11 @@ typedef struct res_data {
 
 typedef res_data_t *(*handle_client_connection_t)(char buf[BUF_SIZE],
                                                   ssize_t req_len,
-                                                  unsigned char *user_data);
+                                                  void *handler_ctx);
 
 typedef struct server_args {
-  // void ? pour éviter une dépendance vers request_handler ?
   handle_client_connection_t handle_client_connection;
-  unsigned char *user_data;
+  void *handler_ctx;
 } server_args_t;
 
 pthread_t *init_server(server_args_t *server_args);

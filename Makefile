@@ -12,7 +12,6 @@ SERVER = \
 CLIENT = \
     client.c \
     lib/command/cmd_serializer.c \
-    lib/request_handler.c \
     $(wildcard lib/utils/string/*.c) \
     protocol.c
 

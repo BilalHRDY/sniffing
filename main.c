@@ -52,9 +52,12 @@ int main() {
   ctx->paused = 1;
   printf("ctx->paused: %d\n", ctx->paused);
 
+  handler_ctx_t handler_ctx = {.request_handler = request_handler,
+                               .user_data = (unsigned char *)ctx};
+
   server_args_t server_args = {.handle_client_connection =
                                    handle_client_connection,
-                               .user_data = (unsigned char *)ctx};
+                               .handler_ctx = (void *)&handler_ctx};
 
   pthread_t *server_thread = init_server(&server_args);
 
