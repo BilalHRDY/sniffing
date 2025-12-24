@@ -1,5 +1,5 @@
 main
-client
+/client
 *.dSYM
 *.o
 .DS_STORE
