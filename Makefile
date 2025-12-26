@@ -10,9 +10,10 @@ SERVER = \
     protocol.c
 	
 CLIENT = \
-    client.c \
     lib/command/cmd_serializer.c \
+    lib/command/cmd_builder.c \
     $(wildcard lib/utils/string/*.c) \
+    $(wildcard lib/client/*.c) \
     protocol.c
 
 run:main

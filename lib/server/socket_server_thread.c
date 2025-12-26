@@ -32,6 +32,8 @@ void *socket_server_thread(void *data) {
           handle_client_connection(buf, bytes, server_args->handler_ctx);
 
       ssize_t r = write(cfd, res_data->res, res_data->res_len);
+
+      free(res_data->res);
       free(res_data);
       printf("response to client length: %lu\n", r);
     }

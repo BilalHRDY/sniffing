@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 typedef struct {
   char *buffer;
@@ -62,7 +63,11 @@ int init_socket(char *sock_path) {
 }
 
 int start_client(char *sock_path, input_handler_t input_handler,
-                 handle_response_t handle_response) {
+                 handle_packet_ctx_t *handle_packet_ctx) {
+
+  handle_packet_t handle_packet = handle_packet_ctx->handle_packet;
+
+  void *ctx = handle_packet_ctx->handler_ctx;
 
   int sfd = init_socket(sock_path);
   input_buffer_t input_buf = new_input_buffer();
@@ -79,20 +84,21 @@ int start_client(char *sock_path, input_handler_t input_handler,
       continue;
     }
 
-    unsigned char *data_to_send;
-    ssize_t data_to_send_len;
-    input_handler(&data_to_send, data_to_send_len);
+    data_to_send_t *data_to_send = malloc(sizeof(data_to_send_t));
+    input_handler(input_buf.buffer, data_to_send);
 
-    ssize_t count = write(sfd, data_to_send, data_to_send_len);
+    ssize_t count = write(sfd, data_to_send->data, data_to_send->len);
 
-    if (count != data_to_send_len) {
+    if (count != data_to_send->len) {
       perror("Error writing to socket");
       return 1;
     }
 
     char buf[BUF_SIZE];
-    read(sfd, buf, sizeof(buf));
+    ssize_t res_len = read(sfd, buf, sizeof(buf));
+    printf("RESPONSE: \n");
 
-    handle_response(buf);
+    // protocol handler
+    handle_packet(buf, res_len, ctx);
   }
 }
