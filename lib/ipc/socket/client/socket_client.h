@@ -1,11 +1,9 @@
-#include "../../protocol.h"
-#include "../../socket_common.h"
+#include "../../protocol/protocol.h"
+#include "../socket_common.h"
 #ifndef SOCKET_CLIENT_H
 #define SOCKET_CLIENT_H
 // #include <sys/types.h>
 
-// TODO: a factoriser avec server
-#define BUF_SIZE 1024
 #define INPUT_MAX_SIZE 256
 
 // void init_socket();

@@ -1,3 +1,4 @@
+#include "../socket_common.h"
 #include "socket_server.h"
 #include "socket_server_thread.h"
 #include <errno.h>
@@ -8,7 +9,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define SV_SOCK_PATH "tmp/sniffing_socket"
 #define BACKLOG 3
 
 typedef struct thread_config {

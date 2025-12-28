@@ -1,4 +1,4 @@
-#include "socket_client.h"
+#include "./socket_client.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +21,7 @@ input_buffer_t new_input_buffer() {
   return input_buf;
 }
 
-void read_input(input_buffer_t *input_buf) {
+static void read_input(input_buffer_t *input_buf) {
   ssize_t bytes_read =
       getline(&(input_buf->buffer), &(input_buf->buffer_length), stdin);
 
@@ -35,7 +35,7 @@ void read_input(input_buffer_t *input_buf) {
   input_buf->buffer[bytes_read - 1] = 0;
 }
 
-int init_socket(char *sock_path) {
+static int init_socket(char *sock_path) {
 
   struct sockaddr_un addr;
   ssize_t numRead;
@@ -87,7 +87,7 @@ int init_client(char *sock_path, input_handler_t input_handler,
 
     data_to_send_t *data_to_send = malloc(sizeof(data_to_send_t));
     input_handler(input_buf.buffer, data_to_send);
-
+    printf("sfd: %d\n", sfd);
     ssize_t count = write(sfd, data_to_send->data, data_to_send->len);
 
     if (count != data_to_send->len) {

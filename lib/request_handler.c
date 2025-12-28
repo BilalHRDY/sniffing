@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void request_handler(uds_request_t *req, uds_request_t *res,
+void request_handler(protocol_request_t *req, protocol_request_t *res,
                      unsigned char *user_data) {
 
   char cmd_res[DATA_SIZE];

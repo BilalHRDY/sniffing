@@ -75,10 +75,10 @@ static CMD_BUILDER_CODE words_to_cmd(char *words[], int len, command_t **cmd) {
   return CMD_BUILDER_OK;
 }
 
-CMD_BUILDER_CODE user_input_to_cmd(char *data, command_t **cmd) {
+CMD_BUILDER_CODE build_cmd_from_str(char *data, command_t **cmd) {
   char **words = malloc(sizeof(char *));
   if (words == NULL) {
-    fprintf(stderr, "user_input_to_cmd: malloc failed!\n");
+    fprintf(stderr, "build_cmd_from_str: malloc failed!\n");
     return CMD_BUILDER_ERROR;
   }
 

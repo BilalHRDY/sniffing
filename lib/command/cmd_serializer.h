@@ -1,6 +1,5 @@
 #ifndef CMD_SERIALIZER_H
 #define CMD_SERIALIZER_H
-#include "../sniffing.h"
 #include "cmd.h"
 
 typedef enum {

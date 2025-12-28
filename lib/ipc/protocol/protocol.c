@@ -1,22 +1,14 @@
 #include "protocol.h"
-#include "lib/command/cmd.h"
-#include "lib/server/socket_server.h"
-#include "lib/types.h"
-#include "lib/utils/string/dynamic_string.h"
-#include "lib/utils/string/string_helpers.h"
+#include "../../command/cmd.h"
+// #include "lib/server/socket_server.h"
+#include "../../types.h"
+#include "../../utils/string/dynamic_string.h"
+#include "../../utils/string/string_helpers.h"
 #include <malloc/malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-//  DATA_SIZE - sizeof(cmd_res)
-#define MSG_SIZE 252
-
-typedef struct res_message {
-  CMD_CODE cmd_res;
-  char message[MSG_SIZE];
-} res_message_t;
 
 // request
 SOCKET_STATUS_CODE verify_packet(char pck[BUF_SIZE], ssize_t pck_len) {
@@ -31,11 +23,11 @@ SOCKET_STATUS_CODE verify_packet(char pck[BUF_SIZE], ssize_t pck_len) {
   }
   return STATUS_OK;
 }
+
 // request
-int client_send_request(int sfd, uds_request_t *req) {
+int client_send_request(int sfd, protocol_request_t *req) {
 
   ssize_t req_len = sizeof(header_t) + req->header.body_len;
-  // write fait pas parti de uds mais de socket
   ssize_t count = write(sfd, req, req_len);
   // printf("count: %zd\n", count);
   if (count != req_len) {
@@ -51,7 +43,7 @@ int client_send_request(int sfd, uds_request_t *req) {
   }
 
   // printf(" res_len: %lu\n", res_len);
-  uds_request_t *res = malloc(res_len);
+  protocol_request_t *res = malloc(res_len);
 
   memcpy(res, buf, res_len);
   if (res->header.response_status != STATUS_OK) {
@@ -71,7 +63,7 @@ void protocol_handle_response(char pck[BUF_SIZE], ssize_t pck_len, void *data) {
   if ((rc = verify_packet(pck, pck_len)) != STATUS_OK) {
     // return rc;
   }
-  uds_request_t res;
+  protocol_request_t res;
   memcpy(&res, pck, pck_len);
   if (res.header.response_status != STATUS_OK) {
     printf("Error from socket server!\n");
@@ -89,7 +81,7 @@ void protocol_handle_request(char buf[BUF_SIZE], ssize_t req_len,
   protocol_ctx_t *protocol_ctx = (protocol_ctx_t *)data;
   request_handler_t request_handler = protocol_ctx->request_handler;
 
-  uds_request_t *res = malloc(sizeof(uds_request_t));
+  protocol_request_t *res = malloc(sizeof(protocol_request_t));
   SOCKET_STATUS_CODE rc;
 
   if ((rc = verify_packet(buf, req_len)) != STATUS_OK) {
@@ -97,7 +89,7 @@ void protocol_handle_request(char buf[BUF_SIZE], ssize_t req_len,
     res->header.body_len = 0;
   } else {
     printf("req_len: %zu\n", req_len);
-    uds_request_t *req = malloc(req_len);
+    protocol_request_t *req = malloc(req_len);
 
     memcpy(req, buf, req_len);
     // **************

@@ -1,6 +1,6 @@
 #include "lib/db.h"
+#include "lib/ipc/socket/server/socket_server.h"
 #include "lib/request_handler.h"
-#include "lib/server/socket_server.h"
 #include "lib/types.h"
 #include <arpa/inet.h>
 #include <pcap/pcap.h>

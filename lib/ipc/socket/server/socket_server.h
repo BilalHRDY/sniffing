@@ -1,10 +1,8 @@
 #ifndef SOCKET_SERVER_H
 #define SOCKET_SERVER_H
-#include "../../socket_common.h"
+#include "../socket_common.h"
 #include <pthread.h>
 #include <sys/types.h>
-
-#define BUF_SIZE 1024
 
 typedef void (*packet_handle_request_t)(char buf[BUF_SIZE], ssize_t req_len,
                                         data_to_send_t *data_to_send,

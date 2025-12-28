@@ -1,4 +1,3 @@
-#include "../../protocol.h"
 #include "../types.h"
 #include "../utils/string/string_helpers.h"
 #include "cmd.h"
@@ -6,11 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO ne pas avoir de dépendance vers protocol
-SNIFFING_API serialize_sessions(session_stats_t *sessions, int *s_len,
-                                char *cmd_res, unsigned int max_size,
-                                unsigned int *cmd_res_size) {
-  printf("serialize_sessions: \n");
+SNIFFING_API serialize_sessions_in_cmd(session_stats_t *sessions, int *s_len,
+                                       char *cmd_res, unsigned int max_size,
+                                       unsigned int *cmd_res_size) {
+  printf("serialize_sessions_in_cmd: \n");
 
   int bytes = 0;
   for (size_t i = 0; i < *s_len; i++) {
@@ -18,7 +16,7 @@ SNIFFING_API serialize_sessions(session_stats_t *sessions, int *s_len,
     printf("*sessions[i].hostname_len: %d\n", sessions[i].hostname_len);
 
     if (bytes + sizeof(int) > max_size) {
-      fprintf(stderr, "serialize_sessions: buffer overflow detected!\n");
+      fprintf(stderr, "serialize_sessions_in_cmd: buffer overflow detected!\n");
       return SNIFFING_INTERNAL_ERROR;
     }
     memcpy(cmd_res + bytes, &(sessions[i].hostname_len), sizeof(int));
@@ -26,7 +24,7 @@ SNIFFING_API serialize_sessions(session_stats_t *sessions, int *s_len,
 
     int full_hst_len = sessions[i].hostname_len + 1;
     if (bytes + full_hst_len > max_size) {
-      fprintf(stderr, "serialize_sessions: buffer overflow detected!\n");
+      fprintf(stderr, "serialize_sessions_in_cmd: buffer overflow detected!\n");
       return SNIFFING_INTERNAL_ERROR;
     }
 
@@ -34,7 +32,7 @@ SNIFFING_API serialize_sessions(session_stats_t *sessions, int *s_len,
     bytes += full_hst_len;
 
     if (bytes + sizeof(int) > max_size) {
-      fprintf(stderr, "serialize_sessions: buffer overflow detected!\n");
+      fprintf(stderr, "serialize_sessions_in_cmd: buffer overflow detected!\n");
       return SNIFFING_INTERNAL_ERROR;
     }
 
@@ -102,8 +100,8 @@ SNIFFING_API process_cmd(command_t *cmd, char *cmd_res,
     if (rc != SNIFFING_OK) {
       return rc;
     }
-    rc = serialize_sessions(s, &s_len, cmd_res, DATA_SIZE - sizeof(CMD_CODE),
-                            cmd_res_size);
+    rc = serialize_sessions_in_cmd(s, &s_len, cmd_res,
+                                   DATA_SIZE - sizeof(CMD_CODE), cmd_res_size);
 
   } break;
   default:

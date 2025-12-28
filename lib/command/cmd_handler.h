@@ -1,7 +1,7 @@
 #ifndef CMD_HANDLER_H
 #define CMD_HANDLER_H
 // enlever cette dépendance
-#include "../../protocol.h"
+#include "../ipc/protocol/protocol.h"
 #include "../sniffing.h"
 #include "cmd.h"
 

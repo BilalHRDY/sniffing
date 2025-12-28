@@ -9,6 +9,6 @@ typedef enum {
   CMD_BUILDER_UNKNOWN_CMD,
 } CMD_BUILDER_CODE;
 
- CMD_BUILDER_CODE user_input_to_cmd(char *data, command_t **cmd);
+CMD_BUILDER_CODE build_cmd_from_str(char *data, command_t **cmd);
 
 #endif

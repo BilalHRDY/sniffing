@@ -5,16 +5,17 @@ SERVER = \
     $(wildcard lib/*.c) \
     $(wildcard lib/command/*.c) \
     $(wildcard lib/utils/*.c) \
-    $(wildcard lib/server/*.c) \
+    $(wildcard lib/ipc/socket/server/*.c) \
+    $(wildcard lib/ipc/protocol/*.c) \
     $(wildcard lib/utils/string/*.c) \
-    protocol.c
 	
 CLIENT = \
     lib/command/cmd_serializer.c \
     lib/command/cmd_builder.c \
     $(wildcard lib/utils/string/*.c) \
+    $(wildcard lib/ipc/socket/client/*.c) \
+    $(wildcard lib/ipc/protocol/*.c) \
     $(wildcard lib/client/*.c) \
-    protocol.c
 
 run:main
 	./main
