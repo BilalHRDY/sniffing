@@ -176,7 +176,7 @@ void deserialize_sessions(char *raw_sessions, int raw_sessions_len,
 
 // application
 
-void handle_response(uds_request_t *res) {
+void handle_cmd_response(uds_request_t *res) {
   printf("handle response (application)\n");
   // res_message_t *res_message;
 
@@ -251,29 +251,13 @@ void input_handler(char *input, data_to_send_t *data_to_send) {
   //   memcpy(data_to_send->data, &req, sizeof(header_t) + req.header.body_len);
 }
 
-// protocol
-void handle_packet(char buf[BUF_SIZE], ssize_t res_len, void *data) {
-
-  handle_response_t handle_response = (handle_response_t)data;
-  int rc;
-  if ((rc = verify_packet(buf, res_len)) != STATUS_OK) {
-    // return rc;
-  }
-  uds_request_t res;
-  memcpy(&res, buf, res_len);
-  if (res.header.response_status != STATUS_OK) {
-    printf("Error from socket server!\n");
-  } else {
-    handle_response(&res);
-  }
-}
-
 int main(int argc, char *argv[]) {
 
-  handle_packet_ctx_t handle_packet_ctx = {
-      .handle_packet = handle_packet, .handler_ctx = (void *)handle_response};
+  packet_handler_client_ctx_t packet_handler_client_ctx = {
+      .packet_handle_response = protocol_handle_response,
+      .packet_ctx = (void *)handle_cmd_response};
 
-  start_client(SV_SOCK_PATH, input_handler, &handle_packet_ctx);
+  init_client(SV_SOCK_PATH, input_handler, &packet_handler_client_ctx);
 
   exit(EXIT_SUCCESS);
 }

@@ -27,17 +27,21 @@ typedef struct uds_request {
 typedef void (*request_handler_t)(uds_request_t *req, uds_request_t *res,
                                   unsigned char *user_data);
 // server
-typedef struct handler_ctx {
+typedef struct protocol_ctx {
   request_handler_t request_handler;
   unsigned char *user_data;
-} handler_ctx_t;
+} protocol_ctx_t;
 
 // client
-typedef void (*handle_response_t)(uds_request_t *req);
+typedef void (*protocol_handle_response_t)(char buf[BUF_SIZE], ssize_t res_len,
+                                           void *data);
 
-int client_send_request(int sfd, uds_request_t *req);
-res_data_t *handle_client_connection(char buf[BUF_SIZE], ssize_t req_len,
-                                     void *handler_ctx);
+typedef void (*response_handler_t)(uds_request_t *req);
+
+void protocol_handle_request(char buf[BUF_SIZE], ssize_t req_len,
+                             data_to_send_t *data_to_send, void *data);
+
+void protocol_handle_response(char buf[BUF_SIZE], ssize_t res_len, void *data);
 
 SOCKET_STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len);
 

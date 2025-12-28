@@ -13,15 +13,17 @@
 
 typedef struct thread_config {
   int sfd;
-  server_args_t *server_args;
+  packet_handler_server_ctx_t *packet_handler_client_ctx;
 } thread_config_t;
 
-static pthread_t *launch_thread(int sfd, server_args_t *server_args) {
+static pthread_t *
+launch_thread(int sfd, packet_handler_server_ctx_t *packet_handler_client_ctx) {
 
   pthread_t *server_thread = malloc(sizeof(pthread_t));
 
   thread_config_t *thread_config = malloc(sizeof(thread_config_t));
-  *thread_config = (thread_config_t){.sfd = sfd, server_args = server_args};
+  *thread_config = (thread_config_t){
+      .sfd = sfd, packet_handler_client_ctx = packet_handler_client_ctx};
 
   int server_thread_res =
       pthread_create(server_thread, NULL, socket_server_thread, thread_config);
@@ -33,7 +35,7 @@ static pthread_t *launch_thread(int sfd, server_args_t *server_args) {
   return server_thread;
 }
 
-pthread_t *init_server(server_args_t *server_args) {
+pthread_t *init_server(packet_handler_server_ctx_t *server_args) {
 
   struct sockaddr_un addr;
 

@@ -52,14 +52,14 @@ int main() {
   ctx->paused = 1;
   printf("ctx->paused: %d\n", ctx->paused);
 
-  handler_ctx_t handler_ctx = {.request_handler = request_handler,
-                               .user_data = (unsigned char *)ctx};
+  protocol_ctx_t protocol_ctx = {.request_handler = request_handler,
+                                 .user_data = (unsigned char *)ctx};
 
-  server_args_t server_args = {.handle_client_connection =
-                                   handle_client_connection,
-                               .handler_ctx = (void *)&handler_ctx};
+  packet_handler_server_ctx_t packet_handler_server_ctx = {
+      .packet_handle_request = protocol_handle_request,
+      .packet_ctx = (void *)&protocol_ctx};
 
-  pthread_t *server_thread = init_server(&server_args);
+  pthread_t *server_thread = init_server(&packet_handler_server_ctx);
 
   init_pcap(ctx);
 

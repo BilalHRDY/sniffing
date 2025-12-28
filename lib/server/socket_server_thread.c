@@ -7,15 +7,16 @@
 
 typedef struct thread_config {
   int sfd;
-  server_args_t *server_args;
+  packet_handler_server_ctx_t *server_args;
 } thread_config_t;
 
 void *socket_server_thread(void *data) {
   thread_config_t *thread_config = (thread_config_t *)data;
-  server_args_t *server_args = thread_config->server_args;
+  packet_handler_server_ctx_t *packet_handler_server_ctx =
+      thread_config->server_args;
   int sfd = thread_config->sfd;
-  handle_client_connection_t handle_client_connection =
-      server_args->handle_client_connection;
+  packet_handle_request_t packet_handle_request =
+      packet_handler_server_ctx->packet_handle_request;
 
   free(thread_config);
 
@@ -28,14 +29,27 @@ void *socket_server_thread(void *data) {
     printf("Accepted socket fd = %d\n", cfd);
 
     while ((bytes = read(cfd, buf, sizeof(buf))) > 0) {
-      res_data_t *res_data =
-          handle_client_connection(buf, bytes, server_args->handler_ctx);
+      // Est ce que je dois factoriser ce code avec le client ?
+      // le client malloc aussi un data_to_send qui est envloyé à une fonction
+      // handler et ensuite on write dans la socket.
 
-      ssize_t r = write(cfd, res_data->res, res_data->res_len);
+      // la seule différence est que le handler du client n'a pas besoin de
+      // bytes
+      //
+      data_to_send_t *data_to_send = malloc(sizeof(data_to_send_t));
 
-      free(res_data->res);
-      free(res_data);
-      printf("response to client length: %lu\n", r);
+      // vérifie le packet et transforme en req pour la passer à un handler
+      // applicatif (avec ctx) et crée une res.
+      packet_handle_request(buf, bytes, data_to_send,
+                            packet_handler_server_ctx->packet_ctx);
+
+      ssize_t count = write(sfd, data_to_send->data, data_to_send->len);
+      if (count != data_to_send->len) {
+        perror("Error writing to socket");
+        // TODO : gérer l'erreur
+      }
+      free(data_to_send->data);
+      free(data_to_send);
     }
     if (bytes == -1) {
       perror("Error reading from socket");

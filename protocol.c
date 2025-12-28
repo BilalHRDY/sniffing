@@ -19,8 +19,8 @@ typedef struct res_message {
 } res_message_t;
 
 // request
-SOCKET_STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len) {
-  header_t *h = (header_t *)buf;
+SOCKET_STATUS_CODE verify_packet(char pck[BUF_SIZE], ssize_t pck_len) {
+  header_t *h = (header_t *)pck;
   if (pck_len != sizeof(header_t) + h->body_len) {
     printf("pck_len: %zu\n", pck_len);
     printf("sizeof(header_t): %zu\n", sizeof(header_t));
@@ -63,18 +63,31 @@ int client_send_request(int sfd, uds_request_t *req) {
   return 0;
 }
 
-typedef struct handler_ctx_t {
-  unsigned char *res;
-  ssize_t res_len;
-} handler_ctx;
+// protocol : utilisé à la fin d'un process client -> pas de res
+void protocol_handle_response(char pck[BUF_SIZE], ssize_t pck_len, void *data) {
+
+  response_handler_t handle_response = (response_handler_t)data;
+  int rc;
+  if ((rc = verify_packet(pck, pck_len)) != STATUS_OK) {
+    // return rc;
+  }
+  uds_request_t res;
+  memcpy(&res, pck, pck_len);
+  if (res.header.response_status != STATUS_OK) {
+    printf("Error from socket server!\n");
+  } else {
+    handle_response(&res);
+  }
+}
 
 // TODO: faire pthread_create =>  avoir un argument pour passer la fonction
 // void request_handler et un autre pour les données qui seront passées à
 // request_handler.
-res_data_t *handle_client_connection(char buf[BUF_SIZE], ssize_t req_len,
-                                     void *data) {
-  handler_ctx_t *handler_ctx = (handler_ctx_t *)data;
-  request_handler_t request_handler = handler_ctx->request_handler;
+void protocol_handle_request(char buf[BUF_SIZE], ssize_t req_len,
+                             data_to_send_t *data_to_send, void *data) {
+  // ***TODO : deserialize request***
+  protocol_ctx_t *protocol_ctx = (protocol_ctx_t *)data;
+  request_handler_t request_handler = protocol_ctx->request_handler;
 
   uds_request_t *res = malloc(sizeof(uds_request_t));
   SOCKET_STATUS_CODE rc;
@@ -87,14 +100,12 @@ res_data_t *handle_client_connection(char buf[BUF_SIZE], ssize_t req_len,
     uds_request_t *req = malloc(req_len);
 
     memcpy(req, buf, req_len);
-
-    request_handler(req, res, handler_ctx->user_data);
+    // **************
+    request_handler(req, res, protocol_ctx->user_data);
     res->header.response_status = STATUS_OK;
 
     free(req);
   }
-  res_data_t *res_data = malloc(sizeof(res_data_t));
-  res_data->res = (unsigned char *)res;
-  res_data->res_len = sizeof(header_t) + res->header.body_len;
-  return res_data;
+  data_to_send->data = (unsigned char *)res;
+  data_to_send->len = sizeof(header_t) + res->header.body_len;
 }

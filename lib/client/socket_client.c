@@ -62,12 +62,13 @@ int init_socket(char *sock_path) {
   return sfd;
 }
 
-int start_client(char *sock_path, input_handler_t input_handler,
-                 handle_packet_ctx_t *handle_packet_ctx) {
+int init_client(char *sock_path, input_handler_t input_handler,
+                packet_handler_client_ctx_t *packet_handler_client_ctx) {
 
-  handle_packet_t handle_packet = handle_packet_ctx->handle_packet;
+  packet_handle_response_t packet_handle_response =
+      packet_handler_client_ctx->packet_handle_response;
 
-  void *ctx = handle_packet_ctx->handler_ctx;
+  void *ctx = packet_handler_client_ctx->packet_ctx;
 
   int sfd = init_socket(sock_path);
   input_buffer_t input_buf = new_input_buffer();
@@ -93,12 +94,14 @@ int start_client(char *sock_path, input_handler_t input_handler,
       perror("Error writing to socket");
       return 1;
     }
-
+    free(data_to_send->data);
+    free(data_to_send);
     char buf[BUF_SIZE];
     ssize_t res_len = read(sfd, buf, sizeof(buf));
     printf("RESPONSE: \n");
 
-    // protocol handler
-    handle_packet(buf, res_len, ctx);
+    // protocol handler: vérifie le packet et transforme en req
+    // pour la passer à un handler applicatif (sans ctx)- pas de res
+    packet_handle_response(buf, res_len, ctx);
   }
 }
