@@ -44,12 +44,10 @@ void *socket_server_thread(void *data) {
                             packet_handler_server_ctx->packet_ctx);
 
       ssize_t count = write(cfd, data_to_send->data, data_to_send->len);
-      printf("sfd: %d\n", sfd);
-      printf("cfd: %d\n", cfd);
+
       if (count != data_to_send->len) {
-        printf("count, data_to_send->len: %zd, %zd\n", count,
-               data_to_send->len);
         perror("Error writing to socket");
+        // close(sfd);
         // TODO : gérer l'erreur
       }
       free(data_to_send->data);

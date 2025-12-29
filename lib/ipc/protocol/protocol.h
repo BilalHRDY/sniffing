@@ -6,15 +6,16 @@
 #define BYTE_ALIGNED __attribute__((packed))
 
 #define DATA_SIZE BUF_SIZE - sizeof(header_t)
-
 typedef enum {
-  STATUS_OK = 0,
-  STATUS_INVALID_PACKET_LENGTH,
-} SOCKET_STATUS_CODE;
+  PROTOCOL_OK = 0,
+  PROTOCOL_INVALID_PACKET_LENGTH,
+  PROTOCOL_MALLOC_ERR,
+
+} PROTOCOL_CODE;
 
 typedef struct header {
   unsigned int body_len;
-  SOCKET_STATUS_CODE response_status;
+  PROTOCOL_CODE response_status;
 } header_t;
 
 typedef struct protocol_request {
@@ -43,6 +44,6 @@ void protocol_handle_request(char buf[BUF_SIZE], ssize_t req_len,
 
 void protocol_handle_response(char buf[BUF_SIZE], ssize_t res_len, void *data);
 
-SOCKET_STATUS_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len);
+PROTOCOL_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len);
 
 #endif
