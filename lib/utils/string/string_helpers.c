@@ -40,7 +40,7 @@ int is_string_in_array(char *target, char **to_compare, int len) {
 
 int has_null_terminator(const char *s) {
   int i = 0;
-  while (1) {
+  while (true) {
     if (s[i] == '\0') {
       return 1;
     }

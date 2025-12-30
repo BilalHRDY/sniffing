@@ -4,7 +4,8 @@
 #include <pthread.h>
 #include <sys/types.h>
 
-typedef void (*packet_handle_request_t)(char buf[BUF_SIZE], ssize_t req_len,
+typedef void (*packet_handle_request_t)(unsigned char buf[BUF_SIZE],
+                                        ssize_t req_len,
                                         data_to_send_t *data_to_send,
                                         void *data);
 

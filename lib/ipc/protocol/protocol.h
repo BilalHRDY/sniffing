@@ -34,16 +34,17 @@ typedef struct protocol_ctx {
 } protocol_ctx_t;
 
 // client
-typedef void (*protocol_handle_response_t)(char buf[BUF_SIZE], ssize_t res_len,
-                                           void *data);
+typedef void (*protocol_handle_response_t)(unsigned char buf[BUF_SIZE],
+                                           ssize_t res_len, void *data);
 
 typedef void (*response_handler_t)(protocol_request_t *req);
 
-void protocol_handle_request(char buf[BUF_SIZE], ssize_t req_len,
+void protocol_handle_request(unsigned char buf[BUF_SIZE], ssize_t req_len,
                              data_to_send_t *data_to_send, void *data);
 
-void protocol_handle_response(char buf[BUF_SIZE], ssize_t res_len, void *data);
+void protocol_handle_response(unsigned char buf[BUF_SIZE], ssize_t res_len,
+                              void *data);
 
-PROTOCOL_CODE verify_packet(char buf[BUF_SIZE], ssize_t pck_len);
+PROTOCOL_CODE verify_packet(unsigned char buf[BUF_SIZE], ssize_t pck_len);
 
 #endif

@@ -9,7 +9,7 @@
 IP_CODE fetch_host_ip(const char *domain, struct addrinfo **res) {
   struct addrinfo hints;
   int status;
-  char ipstr[INET6_ADDRSTRLEN], ipver;
+  // char ipstr[INET6_ADDRSTRLEN], ipver;
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;     // IPv4 ou IPv6

@@ -9,10 +9,10 @@
 
 // request
 // TODO : changer pour PROTOCOL_CODE
-PROTOCOL_CODE verify_packet(char pck[BUF_SIZE], ssize_t pck_len) {
+PROTOCOL_CODE verify_packet(unsigned char pck[BUF_SIZE], ssize_t pck_len) {
   header_t *h = (header_t *)pck;
   if (pck_len != sizeof(header_t) + h->body_len) {
-
+    printf("pck_len: %zu\n", pck_len);
     fprintf(stderr, "verify_packet : Invalid length of packet\n");
 
     return PROTOCOL_INVALID_PACKET_LENGTH;
@@ -20,7 +20,7 @@ PROTOCOL_CODE verify_packet(char pck[BUF_SIZE], ssize_t pck_len) {
   return PROTOCOL_OK;
 }
 
-PROTOCOL_CODE deserialize_request(char buf[BUF_SIZE], ssize_t req_len,
+PROTOCOL_CODE deserialize_request(unsigned char buf[BUF_SIZE], ssize_t req_len,
                                   protocol_request_t **req) {
   *req = malloc(req_len);
   if (*req == NULL) {
@@ -37,11 +37,13 @@ PROTOCOL_CODE deserialize_request(char buf[BUF_SIZE], ssize_t req_len,
 
 // protocol : utilisé à la fin d'un process client -> pas de res
 // TODO : comment gérer "return rc" en cas d'erreur ?
-void protocol_handle_response(char pck[BUF_SIZE], ssize_t pck_len, void *data) {
+void protocol_handle_response(unsigned char pck[BUF_SIZE], ssize_t pck_len,
+                              void *data) {
 
   response_handler_t handle_response = (response_handler_t)data;
   PROTOCOL_CODE rc;
   if ((rc = verify_packet(pck, pck_len)) != PROTOCOL_OK) {
+    return;
     // return rc;
   }
   protocol_request_t res;
@@ -56,7 +58,7 @@ void protocol_handle_response(char pck[BUF_SIZE], ssize_t pck_len, void *data) {
 // TODO: faire pthread_create =>  avoir un argument pour passer la fonction
 // void request_handler et un autre pour les données qui seront passées à
 // request_handler.
-void protocol_handle_request(char buf[BUF_SIZE], ssize_t req_len,
+void protocol_handle_request(unsigned char buf[BUF_SIZE], ssize_t req_len,
                              data_to_send_t *data_to_send, void *data) {
   // ***TODO : deserialize request***
   protocol_ctx_t *protocol_ctx = (protocol_ctx_t *)data;

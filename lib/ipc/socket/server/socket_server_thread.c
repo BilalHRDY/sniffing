@@ -21,8 +21,8 @@ void *socket_server_thread(void *data) {
   free(thread_config);
 
   ssize_t bytes;
-  char buf[BUF_SIZE];
-  while (1) { /* Handle client connections iteratively */
+  unsigned char buf[BUF_SIZE];
+  while (true) { /* Handle client connections iteratively */
 
     printf("Waiting to accept a connection...\n");
     int cfd = accept(sfd, NULL, NULL);

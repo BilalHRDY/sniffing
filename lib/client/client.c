@@ -20,8 +20,8 @@ typedef struct {
   ssize_t input_length;
 } input_buffer_t;
 
-typedef void (*packet_handle_response_t)(char buf[BUF_SIZE], ssize_t res_len,
-                                         void *data);
+typedef void (*packet_handle_response_t)(unsigned char buf[BUF_SIZE],
+                                         ssize_t res_len, void *data);
 
 typedef struct packet_handler_client_ctx {
   packet_handle_response_t packet_handle_response;
@@ -76,7 +76,7 @@ int init_client(char *sock_path, input_handler_t input_handler,
   int sfd = init_socket(sock_path);
   input_buffer_t input_buf = new_input_buffer();
 
-  while (1) {
+  while (true) {
     printf("sniffing> ");
 
     read_input(&input_buf);
@@ -90,12 +90,9 @@ int init_client(char *sock_path, input_handler_t input_handler,
 
     data_to_send_t *data_to_send = malloc(sizeof(data_to_send_t));
     input_handler(input_buf.buffer, data_to_send);
-    printf("sfd: %d\n", sfd);
 
     data_received_t *data_received = malloc(sizeof(data_received_t));
     write_and_read(sfd, data_to_send, data_received);
-
-    printf("RESPONSE: \n");
 
     // protocol handler: vérifie le packet et transforme en req
     // pour la passer à un handler applicatif (sans ctx)- pas de res

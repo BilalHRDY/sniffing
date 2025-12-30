@@ -41,7 +41,9 @@ int write_and_read(int sfd, data_to_send_t *data_to_send,
     return 0;
   }
 
-  ssize_t res_len = read(sfd, data_received->data, data_received->len);
+  ssize_t res_len = read(sfd, data_received->data, sizeof(data_received->data));
+  data_received->len = res_len;
+
   if (res_len == -1) {
     printf("erreur!\n");
     return 0;
