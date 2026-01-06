@@ -39,17 +39,12 @@ static void handle_server_error(SNIFFING_API code_res, CMD_CODE initial_cmd,
 
 // application
 void handle_cmd_response(protocol_request_t *res) {
-  printf("handle response (application)\n");
-  // res_message_t *res_message;
 
-  // TODO essayer CMD_CODE initial_cmd = *(CMD_CODE *)res;
   SNIFFING_API code_res;
   memcpy(&code_res, res->body, sizeof(SNIFFING_API));
-  printf("handle_response: code_res: %d\n", code_res);
 
   CMD_CODE initial_cmd;
   memcpy(&initial_cmd, res->body + sizeof(SNIFFING_API), sizeof(CMD_CODE));
-  printf("handle_response: initial_cmd: %d\n", initial_cmd);
 
   if (code_res != SNIFFING_OK) {
     handle_server_error(code_res, initial_cmd,

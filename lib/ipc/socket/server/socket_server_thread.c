@@ -29,17 +29,9 @@ void *socket_server_thread(void *data) {
     printf("Accepted socket fd = %d\n", cfd);
 
     while ((bytes = read(cfd, buf, sizeof(buf))) > 0) {
-      // Est ce que je dois factoriser ce code avec le client ?
-      // le client malloc aussi un data_to_send qui est envloyé à une fonction
-      // handler et ensuite on write dans la socket.
 
-      // la seule différence est que le handler du client n'a pas besoin de
-      // bytes
-      //
       data_to_send_t data_to_send;
 
-      // vérifie le packet et transforme en req pour la passer à un handler
-      // applicatif (avec ctx) et crée une res.
       packet_handle_request(buf, bytes, &data_to_send,
                             packet_handler_server_ctx->packet_ctx);
 
@@ -50,8 +42,6 @@ void *socket_server_thread(void *data) {
         // close(sfd);
         // TODO : gérer l'erreur
       }
-      // free(data_to_send->data);
-      // free(data_to_send);
     }
     if (bytes == -1) {
       perror("Error reading from socket");
