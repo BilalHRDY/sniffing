@@ -36,22 +36,22 @@ void *socket_server_thread(void *data) {
       // la seule différence est que le handler du client n'a pas besoin de
       // bytes
       //
-      data_to_send_t *data_to_send = malloc(sizeof(data_to_send_t));
+      data_to_send_t data_to_send;
 
       // vérifie le packet et transforme en req pour la passer à un handler
       // applicatif (avec ctx) et crée une res.
-      packet_handle_request(buf, bytes, data_to_send,
+      packet_handle_request(buf, bytes, &data_to_send,
                             packet_handler_server_ctx->packet_ctx);
 
-      ssize_t count = write(cfd, data_to_send->data, data_to_send->len);
+      ssize_t count = write(cfd, &(data_to_send.data), data_to_send.len);
 
-      if (count != data_to_send->len) {
+      if (count != (&data_to_send)->len) {
         perror("Error writing to socket");
         // close(sfd);
         // TODO : gérer l'erreur
       }
-      free(data_to_send->data);
-      free(data_to_send);
+      // free(data_to_send->data);
+      // free(data_to_send);
     }
     if (bytes == -1) {
       perror("Error reading from socket");

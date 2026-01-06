@@ -32,7 +32,7 @@ int init_socket(char *sock_path) {
   }
   return sfd;
 }
-
+// TODO : créer un code d'erreur
 int write_and_read(int sfd, data_to_send_t *data_to_send,
                    data_received_t *data_received) {
   ssize_t count = write(sfd, data_to_send->data, data_to_send->len);
@@ -43,7 +43,6 @@ int write_and_read(int sfd, data_to_send_t *data_to_send,
 
   ssize_t res_len = read(sfd, data_received->data, sizeof(data_received->data));
   data_received->len = res_len;
-
   if (res_len == -1) {
     printf("erreur!\n");
     return 0;

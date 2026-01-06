@@ -21,16 +21,16 @@ PROTOCOL_CODE verify_packet(unsigned char pck[BUF_SIZE], ssize_t pck_len) {
 }
 
 PROTOCOL_CODE deserialize_request(unsigned char buf[BUF_SIZE], ssize_t req_len,
-                                  protocol_request_t **req) {
-  *req = malloc(req_len);
-  if (*req == NULL) {
+                                  protocol_request_t *req) {
+  // *req = malloc(req_len);
+  if (req == NULL) {
     fprintf(stderr, "deserialize_request: malloc failed!\n");
     return PROTOCOL_MALLOC_ERR;
   }
   if (verify_packet(buf, req_len) != PROTOCOL_OK) {
     return PROTOCOL_INVALID_PACKET_LENGTH;
   } else {
-    memcpy(*req, buf, req_len);
+    memcpy(req, buf, req_len);
     return PROTOCOL_OK;
   }
 }
@@ -41,17 +41,19 @@ void protocol_handle_response(unsigned char pck[BUF_SIZE], ssize_t pck_len,
                               void *data) {
 
   response_handler_t handle_response = (response_handler_t)data;
+  protocol_request_t received_req;
   PROTOCOL_CODE rc;
+  deserialize_request(pck, pck_len, &received_req);
+
   if ((rc = verify_packet(pck, pck_len)) != PROTOCOL_OK) {
     return;
     // return rc;
   }
-  protocol_request_t res;
-  memcpy(&res, pck, pck_len);
-  if (res.header.response_status != PROTOCOL_OK) {
+  memcpy(&received_req, pck, pck_len);
+  if (received_req.header.response_status != PROTOCOL_OK) {
     printf("Error from socket server!\n");
   } else {
-    handle_response(&res);
+    handle_response(&received_req);
   }
 }
 
@@ -63,20 +65,21 @@ void protocol_handle_request(unsigned char buf[BUF_SIZE], ssize_t req_len,
   // ***TODO : deserialize request***
   protocol_ctx_t *protocol_ctx = (protocol_ctx_t *)data;
   request_handler_t request_handler = protocol_ctx->request_handler;
-  protocol_request_t *res = malloc(sizeof(protocol_request_t));
+  // protocol_request_t *res = malloc(sizeof(protocol_request_t));
 
   PROTOCOL_CODE rc;
-  protocol_request_t *req;
+  protocol_request_t req;
+  protocol_request_t *res = (protocol_request_t *)data_to_send->data;
 
   if ((rc = deserialize_request(buf, req_len, &req)) != PROTOCOL_OK) {
     res->header.response_status = rc;
     res->header.body_len = 0;
   } else {
-    request_handler(req, res, protocol_ctx->user_data);
+    request_handler(&req, res, protocol_ctx->user_data);
     res->header.response_status = PROTOCOL_OK;
 
-    free(req);
+    // free(req);
   }
-  data_to_send->data = (unsigned char *)res;
+  // data_to_send->data = (unsigned char *)res;
   data_to_send->len = sizeof(header_t) + res->header.body_len;
 }

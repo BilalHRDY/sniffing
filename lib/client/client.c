@@ -53,8 +53,8 @@ static void read_input(input_buffer_t *input_buf) {
   input_buf->buffer[bytes_read - 1] = 0;
 }
 
-CLIENT_CODE init_client_request(char *input, protocol_request_t *req) {
-  printf("init_client_request\n");
+CLIENT_CODE build_cmd_for_request(char *input, protocol_request_t *req) {
+  printf("build_cmd_for_request\n");
   command_t *cmd;
   // TODO traiter si erreur de build_cmd_from_str
   if (build_cmd_from_str(input, &cmd) != CMD_BUILDER_OK) {
@@ -65,7 +65,23 @@ CLIENT_CODE init_client_request(char *input, protocol_request_t *req) {
   return CLIENT_OK;
 }
 
-int init_client(char *sock_path, input_handler_t input_handler,
+void input_handler(char *input, data_to_send_t *data_to_send) {
+  protocol_request_t *req = (protocol_request_t *)data_to_send->data;
+  // protocol_request_t *req = malloc(sizeof(protocol_request_t));
+  req->header.body_len = 0;
+
+  build_cmd_for_request(input, req);
+  //   data_to_send = malloc(sizeof(data_to_send_t));
+
+  //   printf("data_to_send->data: %s\n", data_to_send->data);
+  // data_to_send->data = req;
+  data_to_send->len = sizeof(header_t) + req->header.body_len;
+  //   free(req);
+
+  //   memcpy(data_to_send->data, &req, sizeof(header_t) + req.header.body_len);
+}
+
+int init_client(char *sock_path,
                 packet_handler_client_ctx_t *packet_handler_client_ctx) {
 
   packet_handle_response_t packet_handle_response =
@@ -88,32 +104,14 @@ int init_client(char *sock_path, input_handler_t input_handler,
       continue;
     }
 
-    data_to_send_t *data_to_send = malloc(sizeof(data_to_send_t));
-    input_handler(input_buf.buffer, data_to_send);
+    data_to_send_t data_to_send;
+    input_handler(input_buf.buffer, &data_to_send);
 
-    data_received_t *data_received = malloc(sizeof(data_received_t));
-    write_and_read(sfd, data_to_send, data_received);
+    data_received_t data_received;
+    write_and_read(sfd, &data_to_send, &data_received);
 
-    // protocol handler: vérifie le packet et transforme en req
-    // pour la passer à un handler applicatif (sans ctx)- pas de res
-    packet_handle_response(data_received->data, data_received->len, ctx);
+    packet_handle_response(data_received.data, data_received.len, ctx);
   }
-}
-
-// protocol
-void input_handler(char *input, data_to_send_t *data_to_send) {
-  protocol_request_t *req = malloc(sizeof(protocol_request_t));
-  req->header.body_len = 0;
-
-  init_client_request(input, req);
-  //   data_to_send = malloc(sizeof(data_to_send_t));
-
-  //   printf("data_to_send->data: %s\n", data_to_send->data);
-  data_to_send->data = (unsigned char *)req;
-  data_to_send->len = sizeof(header_t) + req->header.body_len;
-  //   free(req);
-
-  //   memcpy(data_to_send->data, &req, sizeof(header_t) + req.header.body_len);
 }
 
 int main(int argc, char *argv[]) {
@@ -121,7 +119,7 @@ int main(int argc, char *argv[]) {
       .packet_handle_response = protocol_handle_response,
       .packet_ctx = (void *)handle_cmd_response};
 
-  init_client(SV_SOCK_PATH, input_handler, &packet_handler_client_ctx);
+  init_client(SV_SOCK_PATH, &packet_handler_client_ctx);
 
   exit(EXIT_SUCCESS);
 }
