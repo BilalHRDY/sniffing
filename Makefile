@@ -65,7 +65,7 @@ endif
 .PHONY: test
 
 PATH_UNITY = unity/src/
-PATH_LIB = lib/utils/calc/
+PATH_LIB = lib/utils/string/
 PATH_TEST = test/
 PATH_BUILD = build/
 PATH_DEP = build/depends/
@@ -78,11 +78,11 @@ BUILD_PATHS = $(PATH_BUILD) $(PATH_DEP) $(PATH_OBJ) $(PATH_RES)
 # test/Testcalc.c
 SRCT = $(wildcard $(PATH_TEST)*.c)
 
-COMPILE=gcc -c
+COMPILE=gcc -c $(CFLAGS)
 LINK=gcc
 DEPEND=gcc -MM -MG -MF
 CFLAGS=-I$(PATH_UNITY)
-# CFLAGS=-I. -I$(PATH_UNITY) -I$(PATH_LIB) -DTEST
+CFLAGS=-std=c2x -I. -I$(PATH_UNITY) -I$(PATH_LIB) -DTEST
 
 # Pour test/Testcalc.c on a build/results/Testcalc.txt
 RESULTS = $(patsubst $(PATH_TEST)Test%.c,$(PATH_RES)Test%.txt,$(SRCT) )
@@ -91,8 +91,7 @@ PASSED = `grep -s PASS $(PATH_RES)*.txt`
 FAIL = `grep -s FAIL $(PATH_RES)*.txt`
 IGNORE = `grep -s IGNORE $(PATH_RES)*.txt`
 
-# test: build/ build/depends/ build/objs/ build/results/ build/results/Testcalc.txt
-$(info $$mon log = $(RESULTS))
+# test: build/ build/depends/ build/objs/ build/results/ build/results/Test_string_helpers.txt
 test: $(BUILD_PATHS) $(RESULTS)
 	@echo "-----------------------\nIGNORES:\n-----------------------"
 	@echo "$(IGNORE)"
@@ -102,7 +101,8 @@ test: $(BUILD_PATHS) $(RESULTS)
 	@echo "$(PASSED)"
 	@echo "\nDONE"
 
-# build/results/Testcalc.txt: build/Testcalc.out
+
+# build/results/Test_string_helpers.txt: build/Test_string_helpers.out
 $(PATH_RES)%.txt: $(PATH_BUILD)%.$(TARGET_EXTENSION)
 # exécute Testcalc.out - redirige la sortie vers Testcalc.txt
 	-./$< > $@ 2>&1
@@ -114,16 +114,19 @@ $(PATH_BUILD)Test%.$(TARGET_EXTENSION): $(PATH_OBJ)Test%.o $(PATH_OBJ)%.o $(PATH
 	$(LINK) -o $@ $^
 
 # Compile les fichier .c du repertoire de test en .o
-# :: permet de créer une régle indépendante, sans ça seule la dernière règle serait exécutée.
+# :: permet de créer une régle indépendante, sans ça seule la dernière règle $(PATH_OBJ)%.o serait exécutée.
 $(PATH_OBJ)%.o:: $(PATH_TEST)%.c
 	$(COMPILE) $(CFLAGS) $< -o $@
 
-$(PATH_OBJ)%.o:: $(SERVER) 
+# Compile les fichier .c des fichiers sources en .o
+$(PATH_OBJ)%.o:: $(PATH_LIB)%.c
+	$(info $$ $<)
 	$(COMPILE) $(CFLAGS) $< -o $@
 
 # dernière règle pour $(PATH_OBJ)%.o
 $(PATH_OBJ)%.o:: $(PATH_UNITY)%.c $(PATH_UNITY)%.h
 	$(COMPILE) $(CFLAGS) $< -o $@
+
 
 $(PATH_DEP)%.d:: $(PATH_TEST)%.c
 	$(DEPEND) $@ $<
@@ -136,7 +139,7 @@ $(PATH_DEP):
 
 $(PATH_OBJ):
 	$(MKDIR) $(PATH_OBJ)
-
+	
 $(PATH_RES):
 	$(MKDIR) $(PATH_RES)
 
