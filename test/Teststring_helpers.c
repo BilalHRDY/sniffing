@@ -22,6 +22,8 @@ void test_format_duration() {
   TEST_ASSERT_EQUAL_STRING("0d 23h 59m 59s", output);
   output = format_duration(4406399);
   TEST_ASSERT_EQUAL_STRING("50d 23h 59m 59s", output);
+  output = format_duration(99999999999);
+  TEST_ASSERT_EQUAL_STRING("50d 23h 59m 59s", output);
 }
 
 int main(void) {

@@ -6,3 +6,4 @@ main
 .vscode
 *.db
 /lldb
+/build/
