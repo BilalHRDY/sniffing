@@ -73,7 +73,7 @@ char *string_list_to_string(char *list[], unsigned int len) {
   return res;
 }
 
-char *format_duration(int timestamp) {
+char *format_duration(size_t timestamp) {
   int days_count = timestamp / 86400;
   int rest = timestamp % 86400;
 

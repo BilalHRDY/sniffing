@@ -1,5 +1,6 @@
 #ifndef STRING_HELPERS_H
 #define STRING_HELPERS_H
+#include <stdio.h>
 
 typedef enum {
   STR_CODE_OK = 0,
@@ -13,6 +14,6 @@ int is_string_in_array(char *target, char **to_compare, int len);
 int has_null_terminator(const char *s);
 int strings_equal(char *s1, char *s2);
 char *string_list_to_string(char *list[], unsigned int len);
-char *format_duration(int timestamp);
+char *format_duration(size_t timestamp);
 
 #endif
