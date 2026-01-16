@@ -74,7 +74,7 @@ char *string_list_to_string(char *list[], unsigned int len) {
 }
 
 char *format_duration(size_t timestamp) {
-  int days_count = timestamp / 86400;
+  size_t days_count = timestamp / 86400;
   int rest = timestamp % 86400;
 
   int hours_count = rest / 3600;
@@ -83,13 +83,10 @@ char *format_duration(size_t timestamp) {
   int min_count = rest / 60;
   int sec_count = timestamp % 60;
 
-  // TODO free
-  char *output = malloc(16);
+  char *output = malloc(32);
 
-  sprintf(output, "%dd %dh %dm %ds", days_count, hours_count, min_count,
+  sprintf(output, "%zud %dh %dm %ds", days_count, hours_count, min_count,
           sec_count);
-  // for (size_t i = 0; output[i] != '\0'; i++) {
-  //   printf("time[%zu]: %c\n", i, output[i]);
-  // }
+
   return output;
 }

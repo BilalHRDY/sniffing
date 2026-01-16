@@ -72,7 +72,7 @@ void print_sessions(session_store_t *st) {
 
     fill_to_ds(output, "*", raw_line_len);
     add_to_ds(output, "\n");
-
+    free(time);
     // strcat(output, "\n");
   }
   printf("%s\n", output->str);

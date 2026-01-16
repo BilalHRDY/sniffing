@@ -160,9 +160,9 @@ $(PATH_OBJ)%.o:: $(PATH_UNITY)%.c $(PATH_UNITY)%.h
 	$(COMPILE) $< -o $@
 
 
-$(PATH_DEP)%.d:: $(PATH_TEST)%.c
-	@echo "[CC] $< -> $@"
-	$(DEPEND) $@ $<
+# $(PATH_DEP)%.d:: $(PATH_TEST)%.c
+# 	@echo "[CC] $< -> $@"
+# 	$(DEPEND) $@ $<
 
 $(PATH_BUILD):
 	$(MKDIR) $(PATH_BUILD)
