@@ -1,5 +1,0 @@
-test/Teststring_helpers.c:30:test_format_duration:PASS
-
------------------------
-1 Tests 0 Failures 0 Ignored 
-OK
