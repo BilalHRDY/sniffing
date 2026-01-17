@@ -53,16 +53,17 @@ client_d:$(CLIENT_WITH_MAIN)
 ###########  TEST ###########
 
 ifeq ($(OS),Windows_NT)
+# Create the equivalent of rm -rf for Windows.
   ifeq ($(shell uname -s),) # not in a bash-like shell
     CLEANUP = del /F /Q
     MKDIR = mkdir
   else # in a bash-like shell, like msys
-    CLEANUP = rm -f
+    CLEANUP = rm -rf
     MKDIR = mkdir -p
   endif
     TARGET_EXTENSION:=exe
 else
-  CLEANUP = rm -f
+  CLEANUP = rm -rf
   MKDIR = mkdir -p
   TARGET_EXTENSION=out
 endif
@@ -70,6 +71,10 @@ endif
 
 .PHONY: clean
 .PHONY: test
+
+PASSED = `grep -s PASS $(PATH_RES)*.txt`
+FAIL = `grep -s FAIL $(PATH_RES)*.txt`
+IGNORE = `grep -s IGNORE $(PATH_RES)*.txt`
 
 PATH_UNITY = unity/src/
 PATH_LIB = lib/
@@ -80,18 +85,19 @@ PATH_OBJ = build/objs/
 PATH_RES = build/results/
 
 SRCLIB := $(SERVER_LIB) $(CLIENT_LIB)
-# SRCLIB := $(shell find lib -name '*.c')
 
-
+# Génère la liste des fichiers objets (.o) correspondant à tous les fichiers sources (.c) 
+# en modifiant le chemin pour pointer vers build/objs/ en respectant l'arborescence initiale.
+# (ex: lib/command/cmd_builder.c) est transformé en son équivalent build/objs/command/cmd_builder.o
 OBJLIB := $(patsubst $(PATH_LIB)%.c,$(PATH_OBJ)%.o,$(SRCLIB))
+$(info OBJLIB = '$(OBJLIB)')
 
-# 
 BUILD_PATHS = $(PATH_BUILD) $(PATH_DEP) $(PATH_OBJ) $(PATH_RES)
 
 # test/Testcalc.c
 SRCT = $(wildcard $(PATH_TEST)*.c)
 
-CFLAGS_DEBUG=-std=c2x -I. -I$(PATH_UNITY) -I$(PATH_LIB) -DTEST
+CFLAGS_DEBUG=-std=c2x -I$(PATH_UNITY)
 COMPILE=gcc -c $(CFLAGS_DEBUG)
 LINK=gcc
 DEPEND=gcc -MM -MG -MF
@@ -100,12 +106,8 @@ DEPEND=gcc -MM -MG -MF
 # Pour test/Testcalc.c on a build/results/Testcalc.txt
 RESULTS = $(patsubst $(PATH_TEST)Test%.c,$(PATH_RES)Test%.txt,$(SRCT) )
 
-PASSED = `grep -s PASS $(PATH_RES)*.txt`
-FAIL = `grep -s FAIL $(PATH_RES)*.txt`
-IGNORE = `grep -s IGNORE $(PATH_RES)*.txt`
-
 # test: build/ build/depends/ build/objs/ build/results/ build/results/Test_string_helpers.txt
-test: $(BUILD_PATHS) $(RESULTS)
+test: $(BUILD_PATHS)  $(RESULTS)
 	@echo "-----------------------\nIGNORES:\n-----------------------"
 	@echo "$(IGNORE)"
 	@echo "-----------------------\nFAILURES:\n-----------------------"
@@ -114,23 +116,19 @@ test: $(BUILD_PATHS) $(RESULTS)
 	@echo "$(PASSED)"
 	@echo "\nDONE"
 
+# compilation: $(OBJLIB)
 
 # build/results/Test_string_helpers.txt: build/Test_string_helpers.out
 $(PATH_RES)%.txt: $(PATH_BUILD)%.$(TARGET_EXTENSION)
 # exécute Testcalc.out - redirige la sortie vers Testcalc.txt
 	-./$< > $@ 2>&1
 
-# build/Testcalc.out: build/objs/Testcalc.o build/objs/calc.o build/objs/unity.o
-# Lier les fichiers objets pour créer l'exécutable.
-# $(PATH_BUILD)Test%.$(TARGET_EXTENSION): $(PATH_OBJ)Test%.o $(PATH_OBJ)%.o $(PATH_OBJ)unity.o
-# gcc -o build/Testcalc.out build/objs/Testcalc.o build/objs/calc.o build/objs/unity.o
-# 	$(LINK) -o $@ $^
 
 $(PATH_BUILD)Test%.$(TARGET_EXTENSION): \
 	$(PATH_OBJ)Test%.o \
 	$(OBJLIB) \
 	$(PATH_OBJ)unity.o
-	@echo "[LINK] $< -> $@"
+	@echo "\n[Création de liens pour $@] "
 # 	$(info $ $(PATH_BUILD)Test%.$(TARGET_EXTENSION): $(LINK) -o $@ $^)
 	$(LINK) -o $@ $^ $(EXT_DEP)
 
@@ -138,16 +136,15 @@ $(PATH_BUILD)Test%.$(TARGET_EXTENSION): \
 # Compile les fichiers .c du repertoire de test en .o
 # "::" permet de créer une régle indépendante, sans ça seule la dernière règle $(PATH_OBJ)%.o serait exécutée.
 $(PATH_OBJ)%.o:: $(PATH_TEST)%.c
-	@echo "[CC] $< -> $@"
+	@echo "\n[compilation des tests:] $@"
+# 	@echo "[CC] $< -> $@"
 # 	$(info $ $(PATH_OBJ)%.o:: $(PATH_TEST)%.c: $(COMPILE) $< -o $@)
 	$(COMPILE) $< -o $@
 
 # Compile les fichiers .c des fichiers sources en .o
-# $(PATH_OBJ)%.o:: $(PATH_LIB)%.c
-# 	$(COMPILE) $(CFLAGS) $< -o $@
-
 $(PATH_OBJ)%.o:: $(PATH_LIB)%.c
-	@echo "[CC] $< -> $@"
+# 	@echo "[compilation des fichiers sources] $< -> $@"
+	@echo "\n[compilation des fichiers sources:]"
 	@mkdir -p $(dir $@)
 # 	$(info $ $(PATH_OBJ)%.o:: $(PATH_LIB)%.c: $(COMPILE) $< -o $@)
 	$(COMPILE) $< -o $@
@@ -155,29 +152,32 @@ $(PATH_OBJ)%.o:: $(PATH_LIB)%.c
 
 # dernière règle pour $(PATH_OBJ)%.o
 $(PATH_OBJ)%.o:: $(PATH_UNITY)%.c $(PATH_UNITY)%.h
-	@echo "[CC] $< -> $@"
-# 	$(info $ $(PATH_OBJ)%.o:: $(PATH_UNITY)%.c $(PATH_UNITY)%.h: $(COMPILE) $< -o $@)
+	@echo "\n[compilation des fichiers unity:] $< -> $@"
 	$(COMPILE) $< -o $@
 
 
 # $(PATH_DEP)%.d:: $(PATH_TEST)%.c
-# 	@echo "[CC] $< -> $@"
+# 	@echo "\n[CC] $< -> $@"
 # 	$(DEPEND) $@ $<
 
 $(PATH_BUILD):
+	@echo "Creation du repertoire: $@"
 	$(MKDIR) $(PATH_BUILD)
 
 $(PATH_DEP):
+	@echo "Creation du repertoire: $@"
 	$(MKDIR) $(PATH_DEP)
 
 $(PATH_OBJ):
+	@echo "Creation du repertoire: $@"
 	$(MKDIR) $(PATH_OBJ)
 	
 $(PATH_RES):
+	@echo "Creation du repertoire: $@"
 	$(MKDIR) $(PATH_RES)
 
 clean:
-	$(CLEANUP) $(PATH_OBJ)*.o
+	$(CLEANUP) $(PATH_OBJ)*
 	$(CLEANUP) $(PATH_BUILD)*.$(TARGET_EXTENSION)
 	$(CLEANUP) $(PATH_RES)*.txt
 
