@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// TODO: Instead of using a words_len variable, try turning 'words' into a
+// NULL-terminated array so that it can later be iterated over without needing
+// words_len.
+// Use of regex ?
 STR_CODE_ERROR extract_words(char *str, char ***words, int *words_len) {
 
   const char *separators = " ";
@@ -20,32 +24,30 @@ STR_CODE_ERROR extract_words(char *str, char ***words, int *words_len) {
 
     str_token = strtok(NULL, separators);
   }
-  // for (size_t i = 0; i < *words_len; i++) {
-  //   printf("words: %s\n", (*words)[i]);
-  // }
 
   return STR_CODE_OK;
 };
 
 // util
-int is_string_in_array(char *target, char **to_compare, int len) {
+bool is_string_in_array(char *target, char **to_compare, int len) {
 
   for (size_t i = 0; i < len; i++) {
     if (strcmp(target, to_compare[i]) == 0) {
-      return 1;
+      return true;
     }
   }
-  return 0;
+  return false;
 };
 
-int has_null_terminator(const char *s) {
+bool has_null_terminator(const char *s) {
   int i = 0;
   while (true) {
     if (s[i] == '\0') {
-      return 1;
+      return true;
     }
     i++;
   }
+  return false;
 }
 
 int strings_equal(char *s1, char *s2) { return strcmp(s1, s2) == 0; }
@@ -69,24 +71,23 @@ char *string_list_to_string(char *list[], unsigned int len) {
       strcat(res, " ");
     }
   }
-  printf("has_null_terminator: %d\n", has_null_terminator(res));
   return res;
 }
 
-char *format_duration(size_t timestamp) {
-  size_t days_count = timestamp / 86400;
-  int rest = timestamp % 86400;
+char *format_duration(size_t seconds) {
+  size_t days = seconds / 86400;
+  seconds %= 86400;
 
-  int hours_count = rest / 3600;
-  rest = timestamp % 3600;
+  int hours = seconds / 3600;
+  seconds %= 3600;
 
-  int min_count = rest / 60;
-  int sec_count = timestamp % 60;
+  int mins = seconds / 60;
+  int secs = seconds % 60;
 
   char *output = malloc(32);
 
-  sprintf(output, "%zud %dh %dm %ds", days_count, hours_count, min_count,
-          sec_count);
+  snprintf(output, 32, "%zud %dh %dm %ds", days, hours, mins, secs);
+  printf("output: %s\n", output);
 
   return output;
 }

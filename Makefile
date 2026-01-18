@@ -1,4 +1,4 @@
-CFLAGS = -std=c2x
+CFLAG_VERSION = -std=c2x
 EXT_DEP= -lpcap -lsqlite3
 SERVER_LIB = \
     $(wildcard lib/*.c) \
@@ -22,6 +22,7 @@ CLIENT_LIB = \
 
 CLIENT_WITH_MAIN = client.c $(CLIENT_LIB)
 
+###########  CREATE EXECUTABLES AND LAUNCH ###########
 
 run:main
 	./main
@@ -30,27 +31,29 @@ run_client:client
 	./client
 
 main:$(SERVER_WITH_MAIN)
-	clang $(CFLAGS) $(SERVER_WITH_MAIN) $(EXT_DEP) -o main
+	clang $(CFLAG_VERSION) $(SERVER_WITH_MAIN) $(EXT_DEP) -o main
 	
 client:$(CLIENT_WITH_MAIN)
-	clang $(CFLAGS) $(CLIENT_WITH_MAIN) -o client
+	clang $(CFLAG_VERSION) $(CLIENT_WITH_MAIN) -o client
 
-# server debug
+
+###########  DEBUGGING ###########
+
 debug_main:main_d
 	lldb ./main
 
 main_d:$(SERVER_WITH_MAIN)
-	clang -g -O0 $(CFLAGS) $(SERVER_WITH_MAIN) $(EXT_DEP) -o main
+	clang -g -O0 $(CFLAG_VERSION) $(SERVER_WITH_MAIN) $(EXT_DEP) -o main
     
 # client debug
 debug_client:client_d
 	lldb ./client
 
 client_d:$(CLIENT_WITH_MAIN)
-	clang -g -O0 $(CFLAGS) $(CLIENT_WITH_MAIN) -o client
+	clang -g -O0 $(CFLAG_VERSION) $(CLIENT_WITH_MAIN) -o client
 
 
-###########  TEST ###########
+###########  TESTING ###########
 
 ifeq ($(OS),Windows_NT)
 # Create the equivalent of rm -rf for Windows.
@@ -67,7 +70,6 @@ else
   MKDIR = mkdir -p
   TARGET_EXTENSION=out
 endif
-
 
 .PHONY: clean
 .PHONY: test
@@ -86,28 +88,29 @@ PATH_RES = build/results/
 
 SRCLIB := $(SERVER_LIB) $(CLIENT_LIB)
 
-# Génère la liste des fichiers objets (.o) correspondant à tous les fichiers sources (.c) 
-# en modifiant le chemin pour pointer vers build/objs/ en respectant l'arborescence initiale.
-# (ex: lib/command/cmd_builder.c) est transformé en son équivalent build/objs/command/cmd_builder.o
+# Generates a list of object file paths (.o) corresponding to all source files (.c)
+# by changing the path to point to 'build/objs/' while preserving the original directory structure.
+# (e.g., 'lib/command/cmd_builder.c' becomes 'build/objs/command/cmd_builder.o')
 OBJLIB := $(patsubst $(PATH_LIB)%.c,$(PATH_OBJ)%.o,$(SRCLIB))
-$(info OBJLIB = '$(OBJLIB)')
+# $(info OBJLIB = '$(OBJLIB)')
 
 BUILD_PATHS = $(PATH_BUILD) $(PATH_DEP) $(PATH_OBJ) $(PATH_RES)
 
-# test/Testcalc.c
+# Generates a list of all test file paths currently present in /test.
 SRCT = $(wildcard $(PATH_TEST)*.c)
 
-CFLAGS_DEBUG=-std=c2x -I$(PATH_UNITY)
-COMPILE=gcc -c $(CFLAGS_DEBUG)
-LINK=gcc
-DEPEND=gcc -MM -MG -MF
+CFLAGS_TEST=$(CFLAG_VERSION) -I$(PATH_UNITY)
+COMPILE=clang -g -O0 -c $(CFLAGS_TEST)
+LINK=clang
+# DEPEND=gcc -MM -MG -MF
 # CFLAGS=-I$(PATH_UNITY)
 
-# Pour test/Testcalc.c on a build/results/Testcalc.txt
-RESULTS = $(patsubst $(PATH_TEST)Test%.c,$(PATH_RES)Test%.txt,$(SRCT) )
+# Generates a list of file paths (.txt) corresponding to all test files
+# by changing the path to point to 'build/results/'
+# (e.g., 'test/Teststring_helpers.c' becomes 'build/results/Teststring_helpers.txt')
+TEST_RESULTS_FILES = $(patsubst $(PATH_TEST)Test%.c,$(PATH_RES)Test%.txt,$(SRCT) )
 
-# test: build/ build/depends/ build/objs/ build/results/ build/results/Test_string_helpers.txt
-test: $(BUILD_PATHS)  $(RESULTS)
+test: $(BUILD_PATHS) $(TEST_RESULTS_FILES)
 	@echo "-----------------------\nIGNORES:\n-----------------------"
 	@echo "$(IGNORE)"
 	@echo "-----------------------\nFAILURES:\n-----------------------"
@@ -116,43 +119,33 @@ test: $(BUILD_PATHS)  $(RESULTS)
 	@echo "$(PASSED)"
 	@echo "\nDONE"
 
-# compilation: $(OBJLIB)
-
-# build/results/Test_string_helpers.txt: build/Test_string_helpers.out
 $(PATH_RES)%.txt: $(PATH_BUILD)%.$(TARGET_EXTENSION)
-# exécute Testcalc.out - redirige la sortie vers Testcalc.txt
+# runs 'Testcalc.out' and redirects output to 'Testcalc.txt'
 	-./$< > $@ 2>&1
-
 
 $(PATH_BUILD)Test%.$(TARGET_EXTENSION): \
 	$(PATH_OBJ)Test%.o \
 	$(OBJLIB) \
 	$(PATH_OBJ)unity.o
-	@echo "\n[Création de liens pour $@] "
-# 	$(info $ $(PATH_BUILD)Test%.$(TARGET_EXTENSION): $(LINK) -o $@ $^)
+	@echo "\n[Linking for $@] "
 	$(LINK) -o $@ $^ $(EXT_DEP)
 
-
-# Compile les fichiers .c du repertoire de test en .o
-# "::" permet de créer une régle indépendante, sans ça seule la dernière règle $(PATH_OBJ)%.o serait exécutée.
+# Compile the test files (.c) to object files (.o)
+# "::" allows an independent rule; otherwise only the last $(PATH_OBJ)%.o rule would run.
 $(PATH_OBJ)%.o:: $(PATH_TEST)%.c
-	@echo "\n[compilation des tests:] $@"
-# 	@echo "[CC] $< -> $@"
-# 	$(info $ $(PATH_OBJ)%.o:: $(PATH_TEST)%.c: $(COMPILE) $< -o $@)
+	@echo "\n[Compiling tests] $@"
 	$(COMPILE) $< -o $@
 
-# Compile les fichiers .c des fichiers sources en .o
+# Compile the source files (.c) to object files (.o)
 $(PATH_OBJ)%.o:: $(PATH_LIB)%.c
-# 	@echo "[compilation des fichiers sources] $< -> $@"
-	@echo "\n[compilation des fichiers sources:]"
+	@echo "\n[Compiling source files]"
 	@mkdir -p $(dir $@)
-# 	$(info $ $(PATH_OBJ)%.o:: $(PATH_LIB)%.c: $(COMPILE) $< -o $@)
 	$(COMPILE) $< -o $@
 
 
-# dernière règle pour $(PATH_OBJ)%.o
+# Compile the Unity framework files
 $(PATH_OBJ)%.o:: $(PATH_UNITY)%.c $(PATH_UNITY)%.h
-	@echo "\n[compilation des fichiers unity:] $< -> $@"
+	@echo "\n[Compiling Unity files] $< -> $@"
 	$(COMPILE) $< -o $@
 
 
@@ -161,19 +154,19 @@ $(PATH_OBJ)%.o:: $(PATH_UNITY)%.c $(PATH_UNITY)%.h
 # 	$(DEPEND) $@ $<
 
 $(PATH_BUILD):
-	@echo "Creation du repertoire: $@"
+	@echo "Creating directory: $@"
 	$(MKDIR) $(PATH_BUILD)
 
 $(PATH_DEP):
-	@echo "Creation du repertoire: $@"
+	@echo "Creating directory: $@"
 	$(MKDIR) $(PATH_DEP)
 
 $(PATH_OBJ):
-	@echo "Creation du repertoire: $@"
+	@echo "Creating directory: $@"
 	$(MKDIR) $(PATH_OBJ)
 	
 $(PATH_RES):
-	@echo "Creation du repertoire: $@"
+	@echo "Creating directory: $@"
 	$(MKDIR) $(PATH_RES)
 
 clean:
