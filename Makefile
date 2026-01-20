@@ -100,7 +100,7 @@ BUILD_PATHS = $(PATH_BUILD) $(PATH_DEP) $(PATH_OBJ) $(PATH_RES)
 SRCT = $(wildcard $(PATH_TEST)*.c)
 
 CFLAGS_TEST=$(CFLAG_VERSION) -I$(PATH_UNITY)
-COMPILE=clang -g -O0 -c $(CFLAGS_TEST)
+COMPILE=clang -c $(CFLAGS_TEST)
 LINK=clang
 # DEPEND=gcc -MM -MG -MF
 # CFLAGS=-I$(PATH_UNITY)
@@ -108,7 +108,7 @@ LINK=clang
 # Generates a list of file paths (.txt) corresponding to all test files
 # by changing the path to point to 'build/results/'
 # (e.g., 'test/Teststring_helpers.c' becomes 'build/results/Teststring_helpers.txt')
-TEST_RESULTS_FILES = $(patsubst $(PATH_TEST)Test%.c,$(PATH_RES)Test%.txt,$(SRCT) )
+TEST_RESULTS_FILES = $(patsubst $(PATH_TEST)Test_%.c,$(PATH_RES)Test_%.txt,$(SRCT) )
 
 test: $(BUILD_PATHS) $(TEST_RESULTS_FILES)
 	@echo "-----------------------\nIGNORES:\n-----------------------"
@@ -123,8 +123,8 @@ $(PATH_RES)%.txt: $(PATH_BUILD)%.$(TARGET_EXTENSION)
 # runs 'Testcalc.out' and redirects output to 'Testcalc.txt'
 	-./$< > $@ 2>&1
 
-$(PATH_BUILD)Test%.$(TARGET_EXTENSION): \
-	$(PATH_OBJ)Test%.o \
+$(PATH_BUILD)Test_%.$(TARGET_EXTENSION): \
+	$(PATH_OBJ)Test_%.o \
 	$(OBJLIB) \
 	$(PATH_OBJ)unity.o
 	@echo "\n[Linking for $@] "
