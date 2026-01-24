@@ -12,8 +12,14 @@ SERVER_LIB = \
     $(wildcard lib/ipc/socket/server/*.c) \
     $(wildcard lib/ipc/protocol/*.c) \
 
+$(info TEST_PREFIX='$(TEST_PREFIX)')
 
-# SERVER_LIB := $(filter-out %/$(TEST_PREFIX)%.c,$(SERVER_LIB))
+
+SERVER_LIB := $(shell \
+	printf "%s\n" $(SERVER_LIB) | grep -v '/$(TEST_PREFIX)[^/]*\.c$$' \
+)
+
+
 $(info SERVER_LIB = '$(SERVER_LIB)')
 SERVER_WITH_MAIN = main.c $(SERVER_LIB)
 
@@ -26,7 +32,9 @@ CLIENT_LIB = \
     $(wildcard lib/ipc/protocol/*.c) \
     $(wildcard lib/client/*.c) \
 
-# CLIENT_LIB := $(filter-out %/$(TEST_PREFIX)%.c,$(CLIENT_LIB))
+CLIENT_LIB := $(shell \
+	printf "%s\n" $(CLIENT_LIB) | grep -v '/$(TEST_PREFIX)[^/]*\.c$$' \
+)
 CLIENT_WITH_MAIN = client.c $(CLIENT_LIB)
 
 ###########  CREATE EXECUTABLES AND LAUNCH ###########
@@ -98,9 +106,11 @@ COMPILE=clang -c $(CFLAGS_TEST)
 LINK=clang
 
 SRC_TEST_PATHS := $(shell find $(PATH_LIB) -type f -name "$(TEST_PREFIX)*.c")
+$(info SRC_TEST_PATHS = '$(SRC_TEST_PATHS)')
+
 SRC_TEST_NAMES := $(notdir $(SRC_TEST_PATHS))
 
-SRCLIB := $(SERVER_LIB) $(CLIENT_LIB) $(SRC_TEST_PATHS)
+SRCLIB := $(SERVER_LIB) $(CLIENT_LIB) 
 
 # Generates a list of object file paths (.o) corresponding to all source files (.c)
 # by changing the path to point to 'build/objs/' while preserving the original directory structure.
@@ -111,8 +121,13 @@ BUILD_PATHS = $(PATH_BUILD) $(PATH_DEP) $(PATH_BUILD_OBJ) $(PATH_BUILD_RES)
 
 # Generates a list of file paths (.txt) corresponding to all test files
 # by changing the path to point to 'build/results/'
-# (e.g., 'utils/string/tests/test_string_helpers.txt.c' becomes 'build/results/test_string_helpers.txt.txt')
-TEST_RESULTS_TXT := $(patsubst %.c,$(PATH_BUILD_RES)%.txt,$(SRC_TEST_NAMES))
+# (e.g., 'utils/string/tests/test_string_helpers.txt.c' becomes 'build/results/test_string_helpers.txt')
+TEST_RESULTS_TXT := $(patsubst $(PATH_LIB)%.c,$(PATH_BUILD_RES)%.txt,$(SRC_TEST_PATHS))
+# TEST_OBJ := $(patsubst $(PATH_LIB)%.c,$(PATH_BUILD_OBJ)%.o,$(SRC_TEST_PATHS))
+
+$(info TEST_RESULTS_TXT = '$(TEST_RESULTS_TXT)')
+
+clean_test: clean test 
 
 test: $(BUILD_PATHS) $(TEST_RESULTS_TXT)
 	@echo "-----------------------\nIGNORES:\n-----------------------"
@@ -123,29 +138,30 @@ test: $(BUILD_PATHS) $(TEST_RESULTS_TXT)
 	@echo "$(PASSED)"
 	@echo "\nDONE"
 
-# 'build/results/test_string_helpers.txt' : build/results/test_string_helpers.out
-%.txt: %.$(TARGET_EXTENSION)
+# 'build/results/utils/calc/test_cal.txt' : build/results/utils/calc/test_cal.out
+$(PATH_BUILD_RES)%.txt: $(PATH_BUILD)%.$(TARGET_EXTENSION)
 # runs 'Testcalc.out' and redirects output to 'Testcalc.txt'
-	@echo "\n[execute .out] "
-	mkdir -p $(dir $@)
-	-./$< > $@ 2>&1
+	@echo "\n[Execute $*.out] "
+# 	mkdir -p $(dir $@)
+	-./$(PATH_BUILD)$(notdir $*).$(TARGET_EXTENSION) > $(PATH_BUILD_RES)$(notdir $@) 2>&1
 
-# build/results/test_string_helpers.out
-%.$(TARGET_EXTENSION): \
+# build/results/utils/calc/test_cal.out
+$(PATH_BUILD)%.$(TARGET_EXTENSION): \
 	$(OBJLIB) \
+	$(PATH_BUILD_OBJ)%.o \
 	$(PATH_BUILD_OBJ)unity.o
-	@echo "\n[Linking for $@] "
-	mkdir -p $(dir $@)
-	$(LINK) -o $@ $^ $(EXT_DEP)
+	@echo "\n[Linking for $*] "
+# 	mkdir -p $(dir $@)
+	$(LINK) -o $(PATH_BUILD)$(notdir $@) $^ $(EXT_DEP)
 
 # Compile the source files (.c) to object files (.o)
-$(PATH_BUILD_OBJ)%.o:: $(PATH_LIB)%.c
+$(PATH_BUILD_OBJ)%.o: $(PATH_LIB)%.c
 	@echo "\n[Compiling source files]"
 	@mkdir -p $(dir $@)
 	$(COMPILE) $< -o $@
 
 # Compile the Unity framework files
-$(PATH_BUILD_OBJ)%.o:: $(PATH_UNITY)%.c $(PATH_UNITY)%.h
+$(PATH_BUILD_OBJ)unity.o: $(PATH_UNITY)unity.c $(PATH_UNITY)unity.h
 	@echo "\n[Compiling Unity files] $< -> $@"
 	$(COMPILE) $< -o $@
 
@@ -173,4 +189,4 @@ clean:
 .PRECIOUS: $(PATH_BUILD_RES)%.$(TARGET_EXTENSION)
 .PRECIOUS: $(PATH_DEP)%.d
 .PRECIOUS: $(PATH_BUILD_OBJ)%.o
-.PRECIOUS: $(PATH_BUILD_RES)%.txt
+.PRECIOUS: $(PATH_BUILD_RES)
