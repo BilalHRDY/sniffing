@@ -43,7 +43,7 @@ void ht_destroy(ht *table) {
     free((void *)table->items[i].key);
   }
 
-  // Then free entries array and table itself.
+  // Then free entries array and table itself
   free(table->items);
   free(table);
 }

@@ -22,9 +22,6 @@ typedef struct {
   size_t len;
 } cases_store_t;
 
-void setUp() {}
-void tearDown() {}
-
 void assert_is_string_in_array_test(cases_store_t *cases_store) {
   for (size_t i = 0; i < cases_store->len; i++) {
 
@@ -96,14 +93,4 @@ void test_is_string_in_array() {
   ADD_CASE_TO_STORE(&cases_store, NULL, false, "abd", "sdsdf", "dsgsdfsdf");
 
   free(cases_store.cases);
-}
-
-int main(void) {
-  UNITY_BEGIN();
-
-  RUN_TEST(test_is_string_in_array);
-
-  UNITY_END();
-
-  return 0;
 }

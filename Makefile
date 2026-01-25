@@ -9,15 +9,16 @@ SERVER_LIB = \
     $(wildcard lib/utils/*.c) \
     $(wildcard lib/utils/calc/*.c) \
     $(wildcard lib/utils/string/*.c) \
+    $(wildcard lib/utils/string/tests/string_helpers/*.c) \
     $(wildcard lib/ipc/socket/server/*.c) \
     $(wildcard lib/ipc/protocol/*.c) \
 
 $(info TEST_PREFIX='$(TEST_PREFIX)')
 
 
-SERVER_LIB := $(shell \
-	printf "%s\n" $(SERVER_LIB) | grep -v '/$(TEST_PREFIX)[^/]*\.c$$' \
-)
+# SERVER_LIB := $(shell \
+# 	printf "%s\n" $(SERVER_LIB) | grep -v '/$(TEST_PREFIX)[^/]*\.c$$' \
+# )
 
 
 $(info SERVER_LIB = '$(SERVER_LIB)')
@@ -32,9 +33,9 @@ CLIENT_LIB = \
     $(wildcard lib/ipc/protocol/*.c) \
     $(wildcard lib/client/*.c) \
 
-CLIENT_LIB := $(shell \
-	printf "%s\n" $(CLIENT_LIB) | grep -v '/$(TEST_PREFIX)[^/]*\.c$$' \
-)
+# CLIENT_LIB := $(shell \
+# 	printf "%s\n" $(CLIENT_LIB) | grep -v '/$(TEST_PREFIX)[^/]*\.c$$' \
+# )
 CLIENT_WITH_MAIN = client.c $(CLIENT_LIB)
 
 ###########  CREATE EXECUTABLES AND LAUNCH ###########
@@ -106,11 +107,11 @@ COMPILE=clang -c $(CFLAGS_TEST)
 LINK=clang
 
 SRC_TEST_PATHS := $(shell find $(PATH_LIB) -type f -name "$(TEST_PREFIX)*.c")
-$(info SRC_TEST_PATHS = '$(SRC_TEST_PATHS)')
+# $(info SRC_TEST_PATHS = '$(SRC_TEST_PATHS)')
 
 SRC_TEST_NAMES := $(notdir $(SRC_TEST_PATHS))
 
-SRCLIB := $(SERVER_LIB) $(CLIENT_LIB) 
+SRCLIB := $(SERVER_LIB) $(CLIENT_LIB) lib/test_runner.c
 
 # Generates a list of object file paths (.o) corresponding to all source files (.c)
 # by changing the path to point to 'build/objs/' while preserving the original directory structure.
@@ -125,11 +126,13 @@ BUILD_PATHS = $(PATH_BUILD) $(PATH_DEP) $(PATH_BUILD_OBJ) $(PATH_BUILD_RES)
 TEST_RESULTS_TXT := $(patsubst $(PATH_LIB)%.c,$(PATH_BUILD_RES)%.txt,$(SRC_TEST_PATHS))
 # TEST_OBJ := $(patsubst $(PATH_LIB)%.c,$(PATH_BUILD_OBJ)%.o,$(SRC_TEST_PATHS))
 
-$(info TEST_RESULTS_TXT = '$(TEST_RESULTS_TXT)')
+# $(info TEST_RESULTS_TXT = '$(TEST_RESULTS_TXT)')
+
+RUNNER_RESULT = $(PATH_BUILD_RES)test_runner.txt
 
 clean_test: clean test 
 
-test: $(BUILD_PATHS) $(TEST_RESULTS_TXT)
+test: $(BUILD_PATHS) $(RUNNER_RESULT)
 	@echo "-----------------------\nIGNORES:\n-----------------------"
 	@echo "$(IGNORE)"
 	@echo "-----------------------\nFAILURES:\n-----------------------"
@@ -138,21 +141,19 @@ test: $(BUILD_PATHS) $(TEST_RESULTS_TXT)
 	@echo "$(PASSED)"
 	@echo "\nDONE"
 
-# 'build/results/utils/calc/test_cal.txt' : build/results/utils/calc/test_cal.out
+# 'build/results/test_runner.txt' : build/test_runner.out
 $(PATH_BUILD_RES)%.txt: $(PATH_BUILD)%.$(TARGET_EXTENSION)
 # runs 'Testcalc.out' and redirects output to 'Testcalc.txt'
 	@echo "\n[Execute $*.out] "
 # 	mkdir -p $(dir $@)
 	-./$(PATH_BUILD)$(notdir $*).$(TARGET_EXTENSION) > $(PATH_BUILD_RES)$(notdir $@) 2>&1
 
-# build/results/utils/calc/test_cal.out
 $(PATH_BUILD)%.$(TARGET_EXTENSION): \
 	$(OBJLIB) \
-	$(PATH_BUILD_OBJ)%.o \
 	$(PATH_BUILD_OBJ)unity.o
 	@echo "\n[Linking for $*] "
 # 	mkdir -p $(dir $@)
-	$(LINK) -o $(PATH_BUILD)$(notdir $@) $^ $(EXT_DEP)
+	$(LINK) -o $@ $^ $(EXT_DEP)
 
 # Compile the source files (.c) to object files (.o)
 $(PATH_BUILD_OBJ)%.o: $(PATH_LIB)%.c
