@@ -87,7 +87,6 @@ char *format_duration(size_t seconds) {
   char *output = malloc(32);
 
   snprintf(output, 32, "%zud %dh %dm %ds", days, hours, mins, secs);
-  printf("output: %s\n", output);
 
   return output;
 }

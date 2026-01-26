@@ -96,7 +96,7 @@ IGNORE = `grep -s IGNORE $(PATH_BUILD_RES)*.txt`
 
 PATH_UNITY = unity/src/
 PATH_LIB = lib/
-# PATH_TEST = test/
+PATH_TEST = test/
 PATH_BUILD = build/
 PATH_BUILD_OBJ = build/objs/
 PATH_BUILD_RES = build/results/
@@ -127,8 +127,8 @@ TEST_RESULTS_TXT := $(patsubst $(PATH_LIB)%.c,$(PATH_BUILD_RES)%.txt,$(SRC_TEST_
 # TEST_OBJ := $(patsubst $(PATH_LIB)%.c,$(PATH_BUILD_OBJ)%.o,$(SRC_TEST_PATHS))
 
 # $(info TEST_RESULTS_TXT = '$(TEST_RESULTS_TXT)')
-
-RUNNER_RESULT = $(PATH_BUILD_RES)test_runner.txt
+RUNNER_NAME = test_runner
+RUNNER_RESULT = $(PATH_BUILD_RES)$(RUNNER_NAME).txt
 
 clean_test: clean test 
 
@@ -142,14 +142,15 @@ test: $(BUILD_PATHS) $(RUNNER_RESULT)
 	@echo "\nDONE"
 
 # 'build/results/test_runner.txt' : build/test_runner.out
-$(PATH_BUILD_RES)%.txt: $(PATH_BUILD)%.$(TARGET_EXTENSION)
+$(RUNNER_RESULT): $(PATH_BUILD)$(RUNNER_NAME).$(TARGET_EXTENSION)
 # runs 'Testcalc.out' and redirects output to 'Testcalc.txt'
 	@echo "\n[Execute $*.out] "
 # 	mkdir -p $(dir $@)
-	-./$(PATH_BUILD)$(notdir $*).$(TARGET_EXTENSION) > $(PATH_BUILD_RES)$(notdir $@) 2>&1
+	-./$< > $@ 2>&1
 
-$(PATH_BUILD)%.$(TARGET_EXTENSION): \
+$(PATH_BUILD)$(RUNNER_NAME).$(TARGET_EXTENSION): \
 	$(OBJLIB) \
+	$(PATH_BUILD_OBJ)$(RUNNER_NAME).o \
 	$(PATH_BUILD_OBJ)unity.o
 	@echo "\n[Linking for $*] "
 # 	mkdir -p $(dir $@)
@@ -159,6 +160,10 @@ $(PATH_BUILD)%.$(TARGET_EXTENSION): \
 $(PATH_BUILD_OBJ)%.o: $(PATH_LIB)%.c
 	@echo "\n[Compiling source files]"
 	@mkdir -p $(dir $@)
+	$(COMPILE) $< -o $@
+
+$(PATH_BUILD_OBJ)$(RUNNER_NAME).o: $(PATH_TEST)$(RUNNER_NAME).c
+	@echo "\n[Compiling test runner file]"
 	$(COMPILE) $< -o $@
 
 # Compile the Unity framework files

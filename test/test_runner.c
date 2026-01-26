@@ -1,4 +1,4 @@
-#include "./utils/string/tests/string_helpers/str_helpers_tests_index.h"
+#include "./test_index.h"
 #include "unity.h"
 
 void setUp() {}
@@ -8,7 +8,8 @@ int main(void) {
   UNITY_BEGIN();
 
   RUN_TEST(test_extract_words);
-  // RUN_TEST(test_format_duration);
+  RUN_TEST(test_format_duration);
+  RUN_TEST(test_is_string_in_array);
 
   UNITY_END();
 

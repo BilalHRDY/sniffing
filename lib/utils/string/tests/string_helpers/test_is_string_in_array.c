@@ -11,9 +11,9 @@
   } while (0);
 
 typedef struct {
-  char **words; //
+  char **words;
   size_t len;
-  char *target; // "abc"
+  char *target;
   bool expected;
 } case_t;
 
@@ -88,7 +88,7 @@ void test_is_string_in_array() {
                     "¤¼×", "{}");
 
   ADD_CASE_TO_STORE(&cases_store, "Lorem", false, " Lorem ", " ipsum ", "dolor",
-                    "sit", "amet,", "consectetur");
+                    "sit", "amet,", "consectetur ");
 
   ADD_CASE_TO_STORE(&cases_store, NULL, false, "abd", "sdsdf", "dsgsdfsdf");
 
