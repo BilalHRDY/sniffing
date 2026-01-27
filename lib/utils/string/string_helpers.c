@@ -30,7 +30,6 @@ STR_CODE_ERROR extract_words(char *str, char ***words, int *words_len) {
 
 // util
 bool is_string_in_array(char *target, char **to_compare, int len) {
-
   for (size_t i = 0; i < len; i++) {
     if (strcmp(target, to_compare[i]) == 0) {
       return true;
@@ -66,6 +65,8 @@ char *string_list_to_string(char *list[], unsigned int len) {
   res[0] = '\0';
 
   for (size_t i = 0; i < len; i++) {
+    if (strcmp(list[i], "") == 0)
+      continue;
     strcat(res, list[i]);
     if (i != len - 1) {
       strcat(res, " ");
