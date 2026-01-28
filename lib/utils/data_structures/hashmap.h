@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-// Must be a power of 2
+// Must be a power of 2 for modulo operation
 #define INITIAL_CAPACITY 8
 
 typedef struct item {
@@ -55,4 +55,7 @@ hti ht_iterator(ht *table);
 bool ht_next(hti *it);
 void print_hash_table(ht *table);
 void print_session_table(ht *table);
+
+size_t get_index(const char *key, size_t capacity);
+
 #endif

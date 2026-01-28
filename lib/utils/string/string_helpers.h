@@ -12,7 +12,7 @@ typedef enum {
 STR_CODE_ERROR extract_words(char *str, char ***words, int *words_len);
 bool is_string_in_array(char *target, char **to_compare, int len);
 bool has_null_terminator(const char *s);
-int strings_equal(char *s1, char *s2);
+bool strings_equal(char *s1, char *s2);
 char *string_list_to_string(char *list[], unsigned int len);
 char *format_duration(size_t seconds);
 

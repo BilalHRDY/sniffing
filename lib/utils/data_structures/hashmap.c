@@ -1,5 +1,5 @@
 #include "hashmap.h"
-#include "../types.h"
+#include "../../types.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,7 +60,7 @@ static uint64_t hash(const char *key) {
 ht *ht_create(void) {
   ht *table = malloc(sizeof(ht));
   if (table == NULL) {
-    fprintf(stderr, "table initialization: out of memory!\n");
+    fprintf(stderr, "ht_create: table initialization: out of memory!\n");
     exit(EXIT_FAILURE);
   }
 
@@ -68,17 +68,22 @@ ht *ht_create(void) {
   table->items = calloc(table->capacity, sizeof(item));
 
   if (table->items == NULL) {
-    fprintf(stderr, "items initialization: out of memory!\n");
+    fprintf(stderr, "ht_create: items initialization: out of memory!\n");
     exit(EXIT_FAILURE);
   }
   return table;
 }
 
+size_t get_index(const char *key, size_t capacity) {
+  uint64_t h = hash(key);
+  return (size_t)(h & (uint64_t)(capacity - 1));
+}
+
 static void ht_set_entry(item *items, size_t capacity, const char *key,
                          void *value, size_t *count) {
   // AND hash with capacity-1 to ensure it's within items array.
-  uint64_t h = hash(key);
-  size_t index = (size_t)(h & (uint64_t)(capacity - 1));
+
+  size_t index = get_index(key, capacity);
 
   while (items[index].key != NULL) {
     if (strcmp(key, items[index].key) == 0) {
@@ -94,7 +99,7 @@ static void ht_set_entry(item *items, size_t capacity, const char *key,
     }
   }
 
-  // Didn't find key, allocate+copy if needed, then insert it.
+  // A spot is free to insert new key, allocate+copy if needed, then insert it.
   if (count != NULL) {
     key = strdup(key);
     if (key == NULL) {
@@ -137,7 +142,7 @@ static void allocate_memory(ht *table) {
 
 void ht_set(ht *table, const char *key, void *value) {
   if (value == NULL) {
-    fprintf(stderr, "value is NULL!\n");
+    fprintf(stderr, "ht_set: value is NULL!\n");
     exit(EXIT_FAILURE);
   }
 

@@ -9,6 +9,7 @@ SERVER_LIB = \
     $(wildcard lib/utils/*.c) \
     $(wildcard lib/utils/calc/*.c) \
     $(wildcard lib/utils/string/*.c) \
+    $(wildcard lib/utils/data_structures/*.c) \
     $(wildcard lib/ipc/socket/server/*.c) \
     $(wildcard lib/ipc/protocol/*.c) \
 
@@ -105,11 +106,9 @@ COMPILE=clang -g -O0 -c $(CFLAGS_TEST)
 LINK=clang
 
 SRC_TEST_PATHS := $(shell find $(PATH_LIB) -type f -name "$(TEST_PREFIX)*.c")
-# $(info SRC_TEST_PATHS = '$(SRC_TEST_PATHS)')
+RUNNER_NAME = test_runner
 
-SRC_TEST_NAMES := $(notdir $(SRC_TEST_PATHS))
-
-SRCLIB := $(SERVER_LIB) $(CLIENT_LIB) lib/test_runner.c
+SRCLIB := $(SERVER_LIB) $(CLIENT_LIB) $(SRC_TEST_PATHS) $(PATH_LIB)$(RUNNER_NAME).c
 
 # Generates a list of object file paths (.o) corresponding to all source files (.c)
 # by changing the path to point to 'build/objs/' while preserving the original directory structure.
@@ -118,7 +117,6 @@ OBJLIB := $(patsubst $(PATH_LIB)%.c,$(PATH_BUILD_OBJ)%.o,$(SRCLIB))
 
 BUILD_PATHS = $(PATH_BUILD) $(PATH_DEP) $(PATH_BUILD_OBJ) $(PATH_BUILD_RES)
 
-RUNNER_NAME = test_runner
 RUNNER_RESULT = $(PATH_BUILD_RES)$(RUNNER_NAME).txt
 
 clean_test: clean test 
@@ -134,15 +132,16 @@ test: $(BUILD_PATHS) $(RUNNER_RESULT)
 
 # 'build/results/test_runner.txt' : build/test_runner.out
 $(RUNNER_RESULT): $(PATH_BUILD)$(RUNNER_NAME).$(TARGET_EXTENSION)
-	@echo "\n[Execute $*.out] "
+	@echo "\n[Execute $*.$(TARGET_EXTENSION)]"
 	-./$< > $@ 2>&1
 
 # build/test_runner.out
 $(PATH_BUILD)$(RUNNER_NAME).$(TARGET_EXTENSION): \
 	$(OBJLIB) \
 	$(PATH_BUILD_OBJ)$(RUNNER_NAME).o \
+	$(PATH_BUILD_OBJ)$(RUNNER_NAME).o \
 	$(PATH_BUILD_OBJ)unity.o
-	@echo "\n[Linking for $*] "
+	@echo "\n[Linking for $*]"
 	$(LINK) -o $@ $^ $(EXT_DEP)
 
 # Compile the source files (.c) to object files (.o)

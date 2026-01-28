@@ -2,8 +2,8 @@
 #define TYPES_H
 #include "request_handler.h"
 #include "sniffing.h"
-#include "utils/hashmap.h"
-#include "utils/queue.h"
+#include "utils/data_structures/hashmap.h"
+#include "utils/data_structures/queue.h"
 #include <pcap/pcap.h>
 #include <sqlite3.h>
 

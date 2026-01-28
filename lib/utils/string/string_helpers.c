@@ -38,18 +38,7 @@ bool is_string_in_array(char *target, char **to_compare, int len) {
   return false;
 };
 
-bool has_null_terminator(const char *s) {
-  int i = 0;
-  while (true) {
-    if (s[i] == '\0') {
-      return true;
-    }
-    i++;
-  }
-  return false;
-}
-
-int strings_equal(char *s1, char *s2) { return strcmp(s1, s2) == 0; }
+bool strings_equal(char *s1, char *s2) { return strcmp(s1, s2) == 0; }
 
 char *string_list_to_string(char *list[], unsigned int len) {
   printf("string_list_to_string\n");

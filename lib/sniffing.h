@@ -1,8 +1,8 @@
 #ifndef SNIFFING_H
 #define SNIFFING_H
 
-// #include "utils/hashmap.h"
-// #include "utils/queue.h"
+// #include "utils/data_structures/hashmap.h"
+// #include "utils/data_structures/queue.h"
 // #include <netdb.h>
 // #include <pcap/pcap.h>
 // #include <sqlite3.h>

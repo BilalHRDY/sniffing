@@ -3,7 +3,7 @@
 #include "./ip.h"
 #include "./utils/string/string_helpers.h"
 #include "types.h"
-#include "utils/hashmap.h"
+#include "utils/data_structures/hashmap.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
