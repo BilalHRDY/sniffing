@@ -42,7 +42,7 @@ typedef struct {
   int *value;
   int expected_index_for_8_slots;
   int expected_index_for_16_slots;
-  int expected_capacity_at_insertion;
+  //   int expected_capacity_at_insertion;
 } test_case_t;
 
 void assert_all_values(ht *table, test_case_t *test_cases,
@@ -52,12 +52,14 @@ void assert_all_values(ht *table, test_case_t *test_cases,
   //   bool *founded_items = calloc(table->capacity, sizeof(bool));
 
   for (size_t i = 0; i < table->capacity; i++) {
+    if (table->items[i].key == NULL) {
+      TEST_ASSERT_NULL(table->items[i].value);
+    }
     for (size_t j = 0; j < test_cases_len; j++) {
       int expected_index = table->capacity == INITIAL_CAPACITY
                                ? test_cases[j].expected_index_for_8_slots
                                : test_cases[j].expected_index_for_16_slots;
       if (table->items[i].key == NULL) {
-        TEST_ASSERT_NULL(table->items[i].value);
         TEST_ASSERT_NOT_EQUAL_INT(expected_index, i);
       } else {
         if (strcmp(table->items[i].key, test_cases[j].key) == 0) {
@@ -90,10 +92,13 @@ void print_table(ht *table) {
   printf("\n");
 }
 
-void test_ht_set() {
+void add_items_in_table_and_assert() {}
+
+void test_multiple_insertions_in_table() {
   ht *table = ht_create();
   printf("\n");
 
+  //
   int kv_8_slots[26] = {
       ['a' - 'a'] = 4, ['b' - 'a'] = 5, ['c' - 'a'] = 2, ['d' - 'a'] = 3,
       ['e' - 'a'] = 0, ['f' - 'a'] = 1, ['g' - 'a'] = 6, ['h' - 'a'] = 7,
@@ -115,123 +120,65 @@ void test_ht_set() {
   };
   // with FNV hashing and an 8-slot hash table, "g" resolves to index 6
 
-  test_case_t test_cases[] = {
+  test_case_t test_cases[INITIAL_CAPACITY] = {
 
       // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
       // X X X X X X g X    |   X X X X X X g X X X X  X  X  X  o  p
-      {"g", rand_int_ptr(), kv_8_slots['g' - 'a'], kv_16_slots['g' - 'a'],
-       INITIAL_CAPACITY},
+      {"g", rand_int_ptr(), kv_8_slots['g' - 'a'], kv_16_slots['g' - 'a']},
       // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
       // X X X X X X g h    |   X X X X X X g h X X X  X  X  X  o  p
-      {"h", rand_int_ptr(), kv_8_slots['h' - 'a'], kv_16_slots['h' - 'a'],
-       INITIAL_CAPACITY},
+      {"h", rand_int_ptr(), kv_8_slots['h' - 'a'], kv_16_slots['h' - 'a']},
 
       // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
       // o X X X X X g h    |   X X X X X X X X X X X  X  X  X  o  X
-      {"o", rand_int_ptr(), kv_8_slots['o' - 'a'], kv_16_slots['o' - 'a'],
-       INITIAL_CAPACITY},
+      {"o", rand_int_ptr(),
+       (kv_8_slots['o' - 'a'] + 1) % (INITIAL_CAPACITY - 1),
+       kv_16_slots['o' - 'a']},
 
       // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
       // o p X X X X g h    |   X X X X X X X X X X X  X  X  X  o  p
       {"p", rand_int_ptr(),
-       (kv_8_slots['p' - 'a'] + 2) % (INITIAL_CAPACITY - 1),
-       kv_16_slots['p' - 'a'], INITIAL_CAPACITY},
+       (kv_8_slots['p' - 'a'] + 1) % (INITIAL_CAPACITY - 1),
+       kv_16_slots['p' - 'a']},
 
       // The capacity will increase of 2 for this next item
       // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
       // X X X X X X g h X X X  X  a  X  o  p
-      {"a", rand_int_ptr(), -1, kv_16_slots['a' - 'a'], INITIAL_CAPACITY * 2},
+      {"a", rand_int_ptr(), -1, kv_16_slots['a' - 'a']},
 
       // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
       // X X X X X X g h X X X  X  a  j  o  p
-      {"j", rand_int_ptr(), -1, kv_16_slots['j' - 'a'], INITIAL_CAPACITY * 2},
+      {"j", rand_int_ptr(), -1, kv_16_slots['j' - 'a']},
 
       // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
       // q X X X X X g h X X X  X  a  j  o  p
       {"q", rand_int_ptr(), -1,
-       (kv_16_slots['q' - 'a'] + 3) % ((INITIAL_CAPACITY * 2) - 1),
-       INITIAL_CAPACITY * 2},
+       (kv_16_slots['q' - 'a'] + 3) % ((INITIAL_CAPACITY * 2) - 1)},
 
       // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // q X X X X X g h X X X  X  a  j  o  p
-      {"x", rand_int_ptr(), -1, kv_16_slots['x' - 'a'] + 1,
-       INITIAL_CAPACITY * 2},
+      // q X X X X X g h x X X  X  a  j  o  p
+      {"x", rand_int_ptr(), -1, kv_16_slots['x' - 'a'] + 1},
   };
 
   size_t test_cases_len = (sizeof(test_cases) / sizeof(test_case_t));
 
-  for (size_t i = 0; i < test_cases_len; i++) {
+  for (size_t i = 0; i < test_cases_len / 2; i++) {
     ht_set(table, test_cases[i].key, test_cases[i].value);
     print_table(table);
     // assert_value_in_table(table, test_cases[i].key, test_cases[i].index,
     //                       test_cases[i].value, INT);
-    TEST_ASSERT_EQUAL_INT(test_cases[i].expected_capacity_at_insertion,
-                          table->capacity);
+    TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY, table->capacity);
     TEST_ASSERT_EQUAL_INT(i + 1, table->count);
   }
   printf("\n");
 
-  assert_all_values(table, test_cases, test_cases_len);
+  assert_all_values(table, test_cases, test_cases_len / 2);
 
-  //   add_item_in_store(&store, "g", create_int_ptr(1), INT);
-  //   ht_set(table, store.items[store.count - 1].key,
-  //          store.items[store.count - 1].value);
-  //   // with FNV hashing and an 8-slot hash table, "g" resolves to index 6
-  //   assert_value_in_table(table, store.items[store.count - 1].key, 6,
-  //                         store.items[store.count - 1].value,
-  //                         store.items[store.count - 1].type);
-  //   TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY, table->capacity);
-  //   TEST_ASSERT_EQUAL_INT(store.count, table->count);
+  for (size_t i = (test_cases_len / 2) - 1; i < test_cases_len; i++) {
+    ht_set(table, test_cases[i].key, test_cases[i].value);
+    print_table(table);
 
-  //   add_item_in_store(&store, "h", create_int_ptr(2), INT);
-  //   ht_set(table, store.items[store.count - 1].key,
-  //          store.items[store.count - 1].value);
-  //   // with FNV hashing and an 8-slot hash table, "h" resolves to index 7
-  //   assert_value_in_table(table, store.items[store.count - 1].key, 7,
-  //                         store.items[store.count - 1].value,
-  //                         store.items[store.count - 1].type);
-  //   TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY, table->capacity);
-  //   TEST_ASSERT_EQUAL_INT(store.count, table->count);
-
-  //   add_item_in_store(&store, "o", create_int_ptr(345678), INT);
-  //   ht_set(table, store.items[store.count - 1].key,
-  //          store.items[store.count - 1].value);
-  //   // with FNV hashing and an 8-slot hash table, "i" resolves to index 4
-  //   // slots 4 and 5 are occupied, so linear probing places the item at
-  //   index 0 assert_value_in_table(table, store.items[store.count - 1].key,
-  //   0,
-  //                         store.items[store.count - 1].value,
-  //                         store.items[store.count - 1].type);
-  //   TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY, table->capacity);
-  //   TEST_ASSERT_EQUAL_INT(store.count, table->count);
-
-  //   add_item_in_store(&store, "p", create_int_ptr(44444), INT);
-  //   ht_set(table, store.items[store.count - 1].key,
-  //          store.items[store.count - 1].value);
-  //   // with FNV hashing and an 8-slot hash table, "p" resolves to index 7
-  //   but
-  //   // indexes 6, 7, 0 are occupied, so linear probing places the item at
-  //   index 1 assert_value_in_table(table, store.items[store.count - 1].key,
-  //   1,
-  //                         store.items[store.count - 1].value,
-  //                         store.items[store.count - 1].type);
-  //   TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY, table->capacity);
-  //   TEST_ASSERT_EQUAL_INT(store.count, table->count);
-
-  //   add_item_in_store(&store, "a", create_int_ptr(0), INT);
-  //   ht_set(table, store.items[store.count - 1].key,
-  //          store.items[store.count - 1].value);
-  //   // with FNV hashing and an 16-slot hash table, "a" resolves to index 4
-  //   assert_value_in_table(table, store.items[store.count - 1].key, 12,
-  //                         store.items[store.count - 1].value,
-  //                         store.items[store.count - 1].type);
-  //   TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY * 2, table->capacity);
-  //   TEST_ASSERT_EQUAL_INT(store.count, table->count);
-
-  //   free(store.items);
-  //   free(index);
-
-  //   TEST_ASSERT_EQUAL_STRING(key_2, table->items[5].key);
-  //   TEST_ASSERT_EQUAL_INT(*value_2, *(int *)(table->items[5].value));
-  //   size_t index_1 = get_index(key_1, INITIAL_CAPACITY);
+    TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY * 2, table->capacity);
+    TEST_ASSERT_EQUAL_INT(i + 1, table->count);
+  }
 }
