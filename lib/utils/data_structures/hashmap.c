@@ -108,7 +108,7 @@ static void ht_set_entry(item *items, size_t capacity, const char *key,
     }
     (*count)++;
   }
-  items[index].key = (char *)key;
+  items[index].key = key;
   items[index].value = value;
 }
 
