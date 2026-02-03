@@ -13,7 +13,8 @@ int main(void) {
   // RUN_TEST(test_string_list_to_string);
   RUN_TEST(test_ht_create);
   RUN_TEST(test_multiple_insertions_with_collision_and_increased_capacity);
-  RUN_TEST(test_ht_get);
+  RUN_TEST(test_ht_set_and_get);
+  RUN_TEST(test_capacity_and_count);
 
   UNITY_END();
 

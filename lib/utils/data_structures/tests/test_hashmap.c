@@ -178,6 +178,23 @@ void add_items_in_table_and_assert(ht *table, test_case_t *test_cases,
   assert_table_capacity(table);
 }
 
+void test_capacity_and_count() {
+  ht *table = ht_create();
+
+  size_t expected_capacity = INITIAL_CAPACITY;
+  for (size_t i = 0; i < 20000; i++) {
+    TEST_ASSERT_EQUAL_size_t(expected_capacity, table->capacity);
+    TEST_ASSERT_EQUAL_size_t(i, table->count);
+    ht_set(table, rand_str(5), rand_int_ptr());
+
+    if (i + 1 > expected_capacity / 2) {
+      expected_capacity *= 2;
+    }
+  }
+
+  ht_destroy(table);
+}
+
 /**
  * Faire le test de l'insertion d'un item déjà existant et changer sa valeur
  * dans un autre test.
@@ -238,7 +255,7 @@ void test_multiple_insertions_with_collision_and_increased_capacity() {
   printf("\n");
 }
 
-void test_ht_get() {
+void test_ht_set_and_get() {
   ht *table = ht_create();
 
   int items_num = 2000;
@@ -246,6 +263,8 @@ void test_ht_get() {
   for (size_t i = 0; i < items_num; i++) {
     items[i] = (item){.key = rand_str(5), .value = rand_int_ptr()};
     ht_set(table, items[i].key, items[i].value);
+    int *value = ht_get(table, items[i].key);
+    TEST_ASSERT_EQUAL_INT(*(int *)items[i].value, *(int *)value);
   }
 
   for (size_t i = 0; i < items_num; i++) {
@@ -253,6 +272,7 @@ void test_ht_get() {
     TEST_ASSERT_EQUAL_INT(*(int *)items[i].value, *(int *)value);
   }
 
+  free(items);
   ht_destroy(table);
 }
 
