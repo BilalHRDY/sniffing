@@ -9,5 +9,7 @@ void test_ht_create();
 void test_multiple_insertions_with_collision_and_increased_capacity();
 void test_ht_set_and_get();
 void test_capacity_and_count();
+void test_modify_item();
+void test_ht_remove_entry();
 
 #endif

@@ -15,6 +15,8 @@ int main(void) {
   RUN_TEST(test_multiple_insertions_with_collision_and_increased_capacity);
   RUN_TEST(test_ht_set_and_get);
   RUN_TEST(test_capacity_and_count);
+  RUN_TEST(test_modify_item);
+  RUN_TEST(test_ht_remove_entry);
 
   UNITY_END();
 

@@ -33,6 +33,8 @@ void *ht_get(ht *table, const char *key);
 // called). Return address of copied key, or NULL if out of memory.
 void ht_set(ht *table, const char *key, void *value);
 
+void ht_remove_entry(ht *table, const char *key);
+
 // Return number of items in hash table.
 size_t ht_length(ht *table);
 

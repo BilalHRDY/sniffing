@@ -134,6 +134,8 @@ test: $(BUILD_PATHS) $(RUNNER_RESULT)
 $(RUNNER_RESULT): $(PATH_BUILD)$(RUNNER_NAME).$(TARGET_EXTENSION)
 	@echo "\n[Execute $*.$(TARGET_EXTENSION)]"
 	-./$< > $@ 2>&1
+# 	./$< 2>&1 | tee $@
+
 
 # build/test_runner.out
 $(PATH_BUILD)$(RUNNER_NAME).$(TARGET_EXTENSION): \

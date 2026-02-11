@@ -48,6 +48,12 @@ void ht_destroy(ht *table) {
   free(table);
 }
 
+// table->capacity = 3
+// key = 'c' => get_index = 0
+// 'a', 'b' ,'c'
+
+// key = 'c' => get_index = 1
+// 'c', 'a' ,'b'
 static uint64_t hash(const char *key) {
   uint64_t hash = FNV_OFFSET;
   for (const char *p = key; *p; p++) {
@@ -112,6 +118,45 @@ static void ht_set_entry(item *items, size_t capacity, const char *key,
   items[index].value = value;
 }
 
+void ht_remove_entry(ht *table, const char *key) {
+  size_t index = get_index(key, table->capacity);
+  while (table->items[index].key != NULL) {
+    if (strcmp(table->items[index].key, key) == 0) {
+      free((void *)table->items[index].key);
+      free(table->items[index].value);
+      table->items[index].key = NULL;
+      table->items[index].value = NULL;
+
+      // TODO factoriser avec allocate_memory
+      item *new_items = calloc(table->capacity, sizeof(item));
+      if (new_items == NULL) {
+        fprintf(stderr, "new_items allocation: out of memory!\n");
+        exit(EXIT_FAILURE);
+      }
+
+      // Iterate items, move all non-empty ones to new table's items.
+      for (size_t i = 0; i < table->capacity; i++) {
+        item entry = table->items[i];
+        if (entry.key != NULL) {
+          ht_set_entry(new_items, table->capacity, entry.key, entry.value,
+                       NULL);
+        }
+      }
+
+      // Free old items array and update this table's details.
+      free(table->items);
+      table->items = new_items;
+      table->count--;
+    }
+    index++;
+    if (index >= table->capacity) {
+      index = 0;
+    }
+  }
+
+  // table->capacity = table->capacity;
+}
+
 static void allocate_memory(ht *table) {
   printf("allocate_memory\n");
   // Allocate new items array.
@@ -156,8 +201,8 @@ void ht_set(ht *table, const char *key, void *value) {
 }
 
 void *ht_get(ht *table, const char *key) {
-  uint64_t h = hash(key);
-  size_t index = (size_t)(h & (uint64_t)(table->capacity - 1));
+
+  size_t index = get_index(key, table->capacity);
   while (table->items[index].key != NULL) {
     if (strcmp(key, table->items[index].key) == 0) {
       return table->items[index].value;

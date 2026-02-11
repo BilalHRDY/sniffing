@@ -3,11 +3,35 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum {
-  INT = 0,
-  STRING,
+// typedef enum {
+//   INT = 0,
+//   STRING,
 
-} TYPES;
+// } TYPES;
+
+typedef struct {
+  char *key;
+  int *value;
+
+} simple_test_case_t;
+typedef struct {
+  char *key;
+  int *value;
+  int expected_index_for_8_slots;
+  int expected_index_for_16_slots;
+} slot_test_case_t;
+
+typedef struct {
+  char *key;
+  int *value;
+  int *new_value;
+} update_test_case_t;
+
+typedef struct {
+  char *key;
+  int *value;
+  bool to_remove;
+} remove_test_case_t;
 
 char *rand_str(size_t length) {
 
@@ -26,50 +50,36 @@ char *rand_str(size_t length) {
   return res;
 }
 
-static void assert_item_is_null(item *it) {
-  TEST_ASSERT_NULL(it->key);
-  TEST_ASSERT_NULL(it->value);
-}
-
-void test_ht_create() {
-  ht *table = ht_create();
-  TEST_ASSERT_NOT_NULL(table);
-  TEST_ASSERT_EQUAL_size_t(INITIAL_CAPACITY, table->capacity);
-  TEST_ASSERT_EQUAL_size_t(0, table->count);
-  TEST_ASSERT_NOT_NULL(table->items);
-
-  for (size_t i = 0; i < INITIAL_CAPACITY; i++) {
-    assert_item_is_null(table->items + i);
-  }
-}
-
 static int *rand_int_ptr() {
   int *ptr_to_int = malloc(sizeof(int));
   *ptr_to_int = arc4random();
   return ptr_to_int;
 };
 
-typedef struct {
-  char *key;
-  int *value;
-  int expected_index_for_8_slots;
-  int expected_index_for_16_slots;
-} test_case_t;
-typedef struct {
-  char *key;
-  int *value;
+void print_table(ht *table) {
 
-} simple_test_case_t;
+  for (size_t i = 0; i < table->capacity; i++) {
+    if (table->items[i].key == NULL) {
 
-size_t get_expected_index(test_case_t *test_case, size_t table_capacity) {
+      printf("index: %zu, table->items[i].key: %s, value:NULL\n", i,
+             table->items[i].key);
+      continue;
+    }
+    printf("index: %zu, table->items[i].key: %s, value: %d\n", i,
+           table->items[i].key, *(int *)table->items[i].value);
+  }
+  printf("\n");
+}
+
+size_t get_expected_index(slot_test_case_t *test_case, size_t table_capacity) {
   size_t expected_index = table_capacity == INITIAL_CAPACITY
                               ? test_case->expected_index_for_8_slots
                               : test_case->expected_index_for_16_slots;
   return expected_index;
 }
 
-test_case_t *get_case_by_index(size_t index, test_case_t *test_cases,
-                               size_t test_cases_len, ht *table) {
+slot_test_case_t *get_case_by_index(size_t index, slot_test_case_t *test_cases,
+                                    size_t test_cases_len, ht *table) {
 
   for (size_t i = 0; i < test_cases_len; i++) {
     size_t expected_index = get_expected_index(test_cases + i, table->capacity);
@@ -80,24 +90,37 @@ test_case_t *get_case_by_index(size_t index, test_case_t *test_cases,
   return NULL;
 }
 
+void add_items_in_table(ht *table, item *items, size_t items_to_insert) {
+  printf("add_items_in_table\n");
+  for (size_t i = 0; i < items_to_insert; i++) {
+    ht_set(table, items[i].key, items[i].value);
+    print_table(table);
+  }
+}
+
+static void assert_item_is_null(item *it) {
+  TEST_ASSERT_NULL(it->key);
+  TEST_ASSERT_NULL(it->value);
+}
+
+void assert_count_and_capacity(size_t expected_count, size_t expected_capacity,
+                               ht *table) {
+  TEST_ASSERT_EQUAL_size_t(expected_count, table->count);
+  TEST_ASSERT_EQUAL_size_t(expected_capacity, table->capacity);
+}
+
 void assert_item_equals_expected(item *expected_item, item *item) {
   TEST_ASSERT_EQUAL_STRING(expected_item->key, item->key);
   TEST_ASSERT_EQUAL_INT(*(int *)expected_item->value, *(int *)item->value);
 };
 
-void assert_table_count(item *expected_item, item *item) {
-  TEST_ASSERT_EQUAL_STRING(expected_item->key, item->key);
-  TEST_ASSERT_EQUAL_INT(*(int *)expected_item->value, *(int *)item->value);
-};
-
-void assert_all_values(ht *table, test_case_t *test_cases,
+void assert_all_values(ht *table, slot_test_case_t *test_cases,
                        size_t test_cases_len) {
   printf("assert_all_values: \n");
-  size_t count = 0;
 
   for (size_t i = 0; i < table->capacity; i++) {
 
-    test_case_t *test_case =
+    slot_test_case_t *test_case =
         get_case_by_index(i, test_cases, test_cases_len, table);
 
     if (test_case == NULL) {
@@ -105,35 +128,61 @@ void assert_all_values(ht *table, test_case_t *test_cases,
       continue;
     }
     assert_item_equals_expected(table->items + i, (item *)test_case);
-    count++;
   }
-  TEST_ASSERT_EQUAL_size_t(test_cases_len, count);
-  TEST_ASSERT_EQUAL_size_t(test_cases_len, count);
 }
 
-void print_table(ht *table) {
+void test_ht_create() {
+  ht *table = ht_create();
+  TEST_ASSERT_NOT_NULL(table);
+  TEST_ASSERT_NOT_NULL(table->items);
+  assert_count_and_capacity(0, INITIAL_CAPACITY, table);
 
-  for (size_t i = 0; i < table->capacity; i++) {
-    if (table->items[i].key == NULL) {
+  for (size_t i = 0; i < INITIAL_CAPACITY; i++) {
+    assert_item_is_null(table->items + i);
+  }
+}
 
-      // printf("index: %zu, table->items[i].key: %s, value:NULL\n", i,
-      //        table->items[i].key);
-      continue;
+void test_capacity_and_count() {
+  ht *table = ht_create();
+
+  size_t expected_capacity = INITIAL_CAPACITY;
+  for (size_t i = 0; i < 20000; i++) {
+    assert_count_and_capacity(i, expected_capacity, table);
+    ht_set(table, rand_str(5), rand_int_ptr());
+
+    if (i + 1 > expected_capacity / 2) {
+      expected_capacity *= 2;
     }
-    printf("index: %zu, table->items[i].key: %s, value: %d\n", i,
-           table->items[i].key, *(int *)table->items[i].value);
   }
-  printf("\n");
+
+  ht_destroy(table);
 }
 
-void assert_table_capacity(ht *table) {
+void test_modify_item() {
+  ht *table = ht_create();
 
-  if (table->count <= INITIAL_CAPACITY / 2) {
-    TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY, table->capacity);
-  } else {
-    TEST_ASSERT_EQUAL_INT(INITIAL_CAPACITY * 2, table->capacity);
+  size_t test_cases_len = 100;
+  update_test_case_t *test_cases =
+      malloc(sizeof(update_test_case_t) * test_cases_len);
+
+  for (size_t i = 0; i < test_cases_len; i++) {
+    test_cases[i] = (update_test_case_t){.key = rand_str(5),
+                                         .value = rand_int_ptr(),
+                                         .new_value = rand_int_ptr()};
+
+    ht_set(table, test_cases[i].key, test_cases[i].value);
+    print_table(table);
+    ht_set(table, test_cases[i].key, test_cases[i].new_value);
+    print_table(table);
+
+    int *updated_value = ht_get(table, test_cases[i].key);
+    TEST_ASSERT_EQUAL_INT(*test_cases[i].new_value, *updated_value);
   }
+
+  free(test_cases);
+  ht_destroy(table);
 }
+
 /**
    These keys are used as item keys inserted into the hash table.
    The values represent the target slot index where an item would be placed,
@@ -166,93 +215,110 @@ int fnv_index_16[26] = {
     ['y' - 'a'] = 4,  ['z' - 'a'] = 13,
 };
 
-void add_items_in_table_and_assert(ht *table, test_case_t *test_cases,
-                                   size_t test_cases_len, size_t *count_item) {
-  printf("add_items_in_table_and_assert\n");
-  for (size_t i = 0; i < test_cases_len; i++) {
-    ht_set(table, test_cases[i].key, test_cases[i].value);
-    print_table(table);
-    (*count_item)++;
-    TEST_ASSERT_EQUAL_size_t(*count_item, ht_length(table));
-  }
-  assert_table_capacity(table);
-}
-
-void test_capacity_and_count() {
+void test_ht_remove_entry() {
   ht *table = ht_create();
 
-  size_t expected_capacity = INITIAL_CAPACITY;
-  for (size_t i = 0; i < 20000; i++) {
-    TEST_ASSERT_EQUAL_size_t(expected_capacity, table->capacity);
-    TEST_ASSERT_EQUAL_size_t(i, table->count);
-    ht_set(table, rand_str(5), rand_int_ptr());
+  // 0 1 2 3 4 5 6 7
+  // x e _ _ _ _ w g
+  ht_remove_entry(table, "no_existing_item");
+  assert_count_and_capacity(0, INITIAL_CAPACITY, table);
 
-    if (i + 1 > expected_capacity / 2) {
-      expected_capacity *= 2;
+  ht_set(table, "one_item", rand_int_ptr());
+  ht_remove_entry(table, "one_item");
+  assert_count_and_capacity(0, INITIAL_CAPACITY, table);
+  TEST_ASSERT_NULL(ht_get(table, "one_item"));
+
+  ht_set(table, "one_item", rand_int_ptr());
+  ht_set(table, "second_item", rand_int_ptr());
+  ht_remove_entry(table, "second_item");
+  assert_count_and_capacity(1, INITIAL_CAPACITY, table);
+  TEST_ASSERT_NOT_NULL(ht_get(table, "one_item"));
+  TEST_ASSERT_NULL(ht_get(table, "second_item"));
+
+  ht_destroy(table);
+
+  table = ht_create();
+
+  int test_cases_len = 20;
+
+  remove_test_case_t *test_cases =
+      malloc(sizeof(remove_test_case_t) * test_cases_len);
+  for (size_t i = 0; i < test_cases_len; i++) {
+    test_cases[i] = (remove_test_case_t){
+        .key = rand_str(5), .value = rand_int_ptr(), .to_remove = i % 2};
+    printf(" test_cases[i].key: %s,  test_cases[i].value: %d, to_remove: %d\n",
+           test_cases[i].key, *test_cases[i].value, test_cases[i].to_remove);
+    ht_set(table, test_cases[i].key, test_cases[i].value);
+  }
+
+  for (size_t i = 0; i < test_cases_len; i++) {
+    if (test_cases[i].to_remove) {
+      ht_remove_entry(table, test_cases[i].key);
+      TEST_ASSERT_NULL(ht_get(table, test_cases[i].key));
+    } else {
+      TEST_ASSERT_NOT_NULL(ht_get(table, test_cases[i].key));
+      TEST_ASSERT_EQUAL_INT(*test_cases[i].value,
+                            *(int *)ht_get(table, test_cases[i].key));
     }
   }
 
+  print_table(table);
+
+  free(test_cases);
   ht_destroy(table);
+
+  // printf("table->count: %zu\n", table->count);
 }
 
-/**
- * Faire le test de l'insertion d'un item déjà existant et changer sa valeur
- * dans un autre test.
- *
- */
 void test_multiple_insertions_with_collision_and_increased_capacity() {
   ht *table = ht_create();
   printf("\n");
 
-  test_case_t test_cases[INITIAL_CAPACITY] = {
+  slot_test_case_t test_cases[INITIAL_CAPACITY] = {
 
       // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // X X X X X X g X    |   X X X X X X g X X X X  X  X  X  o  p
+      // _ _ _ _ _ _ g _    |   _ _ _ _ _ _ g _ _ _ _  _  _  _  o  p
       {"g", rand_int_ptr(), fnv_index_8['g' - 'a'], fnv_index_16['g' - 'a']},
 
       // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // X X X X X X g h    |   X X X X X X g h X X X  X  X  X  o  p
+      // _ _ _ _ _ _ g h    |   _ _ _ _ _ _ g h _ _ _  _  _  _  o  p
       {"h", rand_int_ptr(), fnv_index_8['h' - 'a'], fnv_index_16['h' - 'a']},
 
       // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // o X X X X X g h    |   X X X X X X X X X X X  X  X  X  o  X
+      // o _ _ _ _ _ g h    |   _ _ _ _ _ _ _ _ _ _ _  _  _  _  o  _
       {"o", rand_int_ptr(),
        (fnv_index_8['o' - 'a'] + 1) % (INITIAL_CAPACITY - 1),
        fnv_index_16['o' - 'a']},
 
       // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // o p X X X X g h    |   X X X X X X X X X X X  X  X  X  o  p
+      // o p _ _ _ _ g h    |   _ _ _ _ _ _ _ _ _ _ _  _  _  _  o  p
       {"p", rand_int_ptr(),
        (fnv_index_8['p' - 'a'] + 1) % (INITIAL_CAPACITY - 1),
        fnv_index_16['p' - 'a']},
 
       // The capacity will increase of 2 for this next item
       // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // X X X X X X g h X X X  X  a  X  o  p
+      // _ _ _ _ _ _ g h _ _ _  _  a  _  o  p
       {"a", rand_int_ptr(), -1, fnv_index_16['a' - 'a']},
 
       // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // X X X X X X g h X X X  X  a  j  o  p
+      // _ _ _ _ _ _ g h _ _ _  _  a  j  o  p
       {"j", rand_int_ptr(), -1, fnv_index_16['j' - 'a']},
 
       // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // q X X X X X g h X X X  X  a  j  o  p
+      // q _ _ _ _ _ g h _ _ _  _  a  j  o  p
       {"q", rand_int_ptr(), -1,
        (fnv_index_16['q' - 'a'] + 3) % ((INITIAL_CAPACITY * 2) - 1)},
 
       // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-      // q X X X X X g h x X X  X  a  j  o  p
+      // q _ _ _ _ _ g h x _ _  _  a  j  o  p
       {"x", rand_int_ptr(), -1, fnv_index_16['x' - 'a'] + 1},
   };
 
-  size_t count_item = 0;
-
-  add_items_in_table_and_assert(table, test_cases, 4, &count_item);
+  add_items_in_table(table, (item *)test_cases, 4);
   assert_all_values(table, test_cases, 4);
-  add_items_in_table_and_assert(table, test_cases + 4, 4, &count_item);
-  assert_all_values(table, test_cases, count_item);
-
-  printf("\n");
+  add_items_in_table(table, (item *)test_cases + 4, 4);
+  assert_all_values(table, test_cases, 8);
 }
 
 void test_ht_set_and_get() {
@@ -275,46 +341,3 @@ void test_ht_set_and_get() {
   free(items);
   ht_destroy(table);
 }
-
-/**
- * void test_get_item_from_table_with_wrap_around() {
-
-test_case_t test_cases[INITIAL_CAPACITY] = {
-
-    // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-    // X f X X X X X X    |   X X X X X X X X X f X  X  X  X  X  X
-    {"f", rand_int_ptr(), fnv_index_8['f' - 'a'], fnv_index_16['f' - 'a']},
-
-    // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-    // X f X X X z X X    |   X X X X X X X X X f X  X  X  z  X  X
-    {"z", rand_int_ptr(), fnv_index_8['z' - 'a'], fnv_index_16['z' - 'a']},
-
-    // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-    // X f v X X z X X    |   X X X X X X X X X f v  X  X  z  X  X
-    {"v", rand_int_ptr(), fnv_index_8['v' - 'a'] + 1, fnv_index_16['v' - 'a']},
-
-    // 0 1 2 3 4 5 6 7    |   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-    // X f v X X z g X    |   X X X X X X g X X f v  X  X  z  X  X
-    {"g", rand_int_ptr(), fnv_index_8['g' - 'a'], fnv_index_16['g' - 'a']},
-
-    // The capacity will increase of 2 for this next item
-    // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-    // X X X X X X g X X f v  X  a  z  X  X
-    {"a", rand_int_ptr(), -1, fnv_index_16['a' - 'a']},
-
-    // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-    // X X X X X X g h X X X  X  a  j  o  p
-    {"j", rand_int_ptr(), -1, fnv_index_16['j' - 'a']},
-
-    // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-    // q X X X X X g h X X X  X  a  j  o  p
-    {"q", rand_int_ptr(), -1,
-     (fnv_index_16['q' - 'a'] + 3) % ((INITIAL_CAPACITY * 2) - 1)},
-
-    // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
-    // q X X X X X g h x X X  X  a  j  o  p
-    {"x", rand_int_ptr(), -1, fnv_index_16['x' - 'a'] + 1},
-};
-}
-
-*/
