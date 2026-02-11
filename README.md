@@ -21,14 +21,15 @@ make run
 
 ### Start the Client
 
-````bash
-make run_client`
+```bash
+make run_client
+```
 
 ### Run Tests
 
 ```bash
 make test
-````
+```
 
 ## Client Commands
 
