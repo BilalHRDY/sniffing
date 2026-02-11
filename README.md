@@ -41,29 +41,29 @@ sniffing>
 ### Add a Hostname to Monitor
 
 ```bash
-sniffing> hostname add www.instagram.com
+hostname add www.instagram.com
 ```
 
 ### List Monitored Hostnames
 
 ```bash
-sniffing> hostname list
+hostname list
 ```
 
 ### Display Metrics
 
 ```bash
-sniffing> stats
+stats
 ```
 
 ### Stop the Server
 
 ```bash
-sniffing> server stop
+server stop
 ```
 
 ### Start the Server
 
 ```bash
-sniffing> server start
+server start
 ```
