@@ -15,37 +15,55 @@ A CLI client allowing users to manage monitored hostnames and retrieve statistic
 
 ### Start the Server
 
-`make run`
+```bash
+make run
+```
 
 ### Start the Client
 
-`make run_client`
+````bash
+make run_client`
 
 ### Run Tests
 
-`make test`
+```bash
+make test
+````
 
 ## Client Commands
 
 Once the client is running, you can use the interactive prompt:
-`sniffing>`
+
+```bash
+sniffing>
+```
 
 ### Add a Hostname to Monitor
 
-`sniffing> hostname add www.instagram.com`
+```bash
+sniffing> hostname add www.instagram.com
+```
 
 ### List Monitored Hostnames
 
-`sniffing> hostname list`
+```bash
+sniffing> hostname list
+```
 
 ### Display Metrics
 
-`sniffing> stats`
+```bash
+sniffing> stats
+```
 
 ### Stop the Server
 
-`sniffing> server stop`
+```bash
+sniffing> server stop
+```
 
 ### Start the Server
 
-`sniffing> server start`
+```bash
+sniffing> server start
+```
