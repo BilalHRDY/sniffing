@@ -64,6 +64,12 @@ int init_client(char *sock_path,
 
   int sfd = init_socket(sock_path);
   input_buffer_t input_buf = new_input_buffer();
+  printf("  ____  _   _ ___ _____ _____ ___ _   _  ____ \n"
+         " / ___|| \\ | |_ _|  ___|  ___|_ _| \\ | |/ ___|\n"
+         " \\___ \\|  \\| || || |_  | |_   | ||  \\| | |  _ \n"
+         "  ___) | |\\  || ||  _| |  _|  | || |\\  | |_| |\n"
+         " |____/|_| \\_|___|_|   |_|   |___|_| \\_|\\____|\n"
+         "                                              \n");
 
   while (true) {
     printf("sniffing> ");

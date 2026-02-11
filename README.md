@@ -1,6 +1,14 @@
 # SNIFFING
 
-SNIFFING is a TCP/IP network sniffer written in C using the libpcap library.  
+```
+  ____  _   _ ___ _____ _____ ___ _   _  ____
+ / ___|| \ | |_ _|  ___|  ___|_ _| \ | |/ ___|
+ \___ \|  \| || || |_  | |_   | ||  \| | |  _
+  ___) | |\  || ||  _| |  _|  | || |\  | |_| |
+ |____/|_| \_|___|_|   |_|   |___|_| \_|\____|
+```
+
+A TCP/IP network sniffer written in C using the libpcap library.  
 It captures network traffic on the host machine and records metrics related to visited websites, including the time spent on specific domains.
 
 A CLI client allowing users to manage monitored hostnames and retrieve statistics.
