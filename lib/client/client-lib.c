@@ -48,7 +48,6 @@ CLIENT_CODE build_cmd_for_request(char *input, protocol_request_t *req) {
 void input_handler(char *input, data_to_send_t *data_to_send) {
   protocol_request_t *req = (protocol_request_t *)data_to_send->data;
   req->header.body_len = 0;
-
   build_cmd_for_request(input, req);
 
   data_to_send->len = sizeof(header_t) + req->header.body_len;

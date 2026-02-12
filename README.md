@@ -13,10 +13,27 @@ It captures network traffic on the host machine and records metrics related to v
 
 A CLI client allowing users to manage monitored hostnames and retrieve statistics.
 
+Example:
+
+```
+sniffing> stats
+***********************************************************************************
+*                HOSTNAME                *             TOTAL DURATION             *
+***********************************************************************************
+*             www.lemonde.fr             *              0d 3h 7m 23s              *
+***********************************************************************************
+*          www.pythontutor.com           *              0d 0h 1m 37s              *
+***********************************************************************************
+*             www.google.com             *              0d 0h 4m 53s              *
+***********************************************************************************
+```
+
 ## Requirements
 
-- GCC (or compatible C compiler)
+- **Currently supported platform: macOS only**
+- clang (or compatible C compiler)
 - libpcap
+- SQLite
 - Make
 
 ## Build & Run

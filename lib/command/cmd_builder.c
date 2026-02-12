@@ -84,7 +84,7 @@ CMD_BUILDER_CODE build_cmd_from_str(char *data, command_t **cmd) {
 
   int words_len;
 
-  STR_CODE_ERROR rc = extract_words(NULL, &words, &words_len);
+  STR_CODE_ERROR rc = extract_words(data, &words, &words_len);
   if (rc != STR_CODE_OK) {
     return CMD_BUILDER_ERROR;
   }
