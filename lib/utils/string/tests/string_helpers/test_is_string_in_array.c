@@ -52,6 +52,7 @@ static void add_to_store(char **array, size_t len, char *target, bool expected,
 };
 
 void test_is_string_in_array() {
+  printf("test_is_string_in_array\n");
   cases_store_t cases_store = {0};
 
   ADD_CASE_TO_STORE(&cases_store, "abc", true, "aqsd", "df", "abc");

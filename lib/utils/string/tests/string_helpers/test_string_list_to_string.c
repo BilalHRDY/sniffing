@@ -46,7 +46,7 @@ static void add_to_store(cases_store_t *cases_store, char *expected,
 };
 
 void test_string_list_to_string() {
-
+  printf("test_string_list_to_string\n");
   cases_store_t cases_store = {0};
   char *input1 = "abc aertry e";
   ADD_CASE_TO_STORE(&cases_store, input1, "abc", "aertry", "e");

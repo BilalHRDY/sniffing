@@ -4,6 +4,7 @@
 #include <string.h>
 
 void test_format_duration() {
+  printf("test_format_duration\n");
   char *output = format_duration(0);
   TEST_ASSERT_EQUAL_STRING("0d 0h 0m 0s", output);
   output = format_duration(1);
@@ -26,4 +27,5 @@ void test_format_duration() {
   // TODO: Warning, this test should not be valid on 32-bit systems
   output = format_duration(SIZE_MAX);
   TEST_ASSERT_EQUAL_STRING("213503982334601d 7h 0m 15s", output);
+  free(output);
 }

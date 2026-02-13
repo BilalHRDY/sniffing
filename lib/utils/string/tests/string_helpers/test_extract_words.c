@@ -40,6 +40,7 @@ void assert_extract_words_test(char *input, int expected_len,
 }
 
 void test_extract_words() {
+  printf("test_extract_words\n");
 
   char *expected_1[] = {"Lorem",        "ipsum",       "dolor",      "sit",
                         "amet,",        "consectetur", "adipiscing", "elit.",

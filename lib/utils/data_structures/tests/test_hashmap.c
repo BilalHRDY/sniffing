@@ -43,7 +43,6 @@ char *rand_str(size_t length) {
 
   while (length-- > 0) {
     size_t index = arc4random() % (sizeof charset - 1);
-    // printf("index: %zu\n", index);
     *tmp++ = charset[index];
   }
   *tmp = '\0';
@@ -90,11 +89,10 @@ slot_test_case_t *get_case_by_index(size_t index, slot_test_case_t *test_cases,
   return NULL;
 }
 
-void add_items_in_table(ht *table, item *items, size_t items_to_insert) {
-  printf("add_items_in_table\n");
+void add_slot_tests_in_table(ht *table, slot_test_case_t *slot_tests,
+                             size_t items_to_insert) {
   for (size_t i = 0; i < items_to_insert; i++) {
-    ht_set(table, items[i].key, items[i].value);
-    print_table(table);
+    ht_set(table, slot_tests[i].key, slot_tests[i].value);
   }
 }
 
@@ -132,6 +130,7 @@ void assert_all_values(ht *table, slot_test_case_t *test_cases,
 }
 
 void test_ht_create() {
+  printf("test_ht_create\n");
   ht *table = ht_create();
   TEST_ASSERT_NOT_NULL(table);
   TEST_ASSERT_NOT_NULL(table->items);
@@ -140,9 +139,11 @@ void test_ht_create() {
   for (size_t i = 0; i < INITIAL_CAPACITY; i++) {
     assert_item_is_null(table->items + i);
   }
+  ht_destroy(table);
 }
 
 void test_capacity_and_count() {
+  printf("test_capacity_and_count\n");
   ht *table = ht_create();
 
   size_t expected_capacity = INITIAL_CAPACITY;
@@ -155,10 +156,18 @@ void test_capacity_and_count() {
     }
   }
 
+  for (size_t i = 0; i < 20000; i++) {
+    if (table->items[i].key != NULL) {
+      free(table->items[i].value);
+    }
+  }
+
   ht_destroy(table);
+  table = NULL;
 }
 
 void test_modify_item() {
+  printf("test_modify_item\n");
   ht *table = ht_create();
 
   size_t test_cases_len = 100;
@@ -171,16 +180,21 @@ void test_modify_item() {
                                          .new_value = rand_int_ptr()};
 
     ht_set(table, test_cases[i].key, test_cases[i].value);
-    print_table(table);
     ht_set(table, test_cases[i].key, test_cases[i].new_value);
-    print_table(table);
 
     int *updated_value = ht_get(table, test_cases[i].key);
     TEST_ASSERT_EQUAL_INT(*test_cases[i].new_value, *updated_value);
   }
 
+  for (size_t i = 0; i < test_cases_len; i++) {
+    free(test_cases[i].key);
+    free(test_cases[i].new_value);
+    free(test_cases[i].value);
+  }
   free(test_cases);
+
   ht_destroy(table);
+  table = NULL;
 }
 
 /**
@@ -216,38 +230,42 @@ int fnv_index_16[26] = {
 };
 
 void test_ht_remove_entry() {
+  printf("test_ht_remove_entry\n");
   ht *table = ht_create();
 
   // 0 1 2 3 4 5 6 7
   // x e _ _ _ _ w g
   ht_remove_entry(table, "no_existing_item");
   assert_count_and_capacity(0, INITIAL_CAPACITY, table);
-
-  ht_set(table, "one_item", rand_int_ptr());
+  int *value_1 = rand_int_ptr();
+  ht_set(table, "one_item", value_1);
   ht_remove_entry(table, "one_item");
   assert_count_and_capacity(0, INITIAL_CAPACITY, table);
   TEST_ASSERT_NULL(ht_get(table, "one_item"));
+  free(value_1);
 
-  ht_set(table, "one_item", rand_int_ptr());
-  ht_set(table, "second_item", rand_int_ptr());
+  value_1 = rand_int_ptr();
+  ht_set(table, "one_item", value_1);
+  ht_set(table, "second_item", value_1);
   ht_remove_entry(table, "second_item");
   assert_count_and_capacity(1, INITIAL_CAPACITY, table);
   TEST_ASSERT_NOT_NULL(ht_get(table, "one_item"));
   TEST_ASSERT_NULL(ht_get(table, "second_item"));
+  free(value_1);
 
+  // Be careful: pointers stored from rand_int_ptr() are not being freed.
   ht_destroy(table);
 
   table = ht_create();
 
-  int test_cases_len = 20;
+  size_t test_cases_len = 20;
 
   remove_test_case_t *test_cases =
       malloc(sizeof(remove_test_case_t) * test_cases_len);
+
   for (size_t i = 0; i < test_cases_len; i++) {
     test_cases[i] = (remove_test_case_t){
         .key = rand_str(5), .value = rand_int_ptr(), .to_remove = i % 2};
-    printf(" test_cases[i].key: %s,  test_cases[i].value: %d, to_remove: %d\n",
-           test_cases[i].key, *test_cases[i].value, test_cases[i].to_remove);
     ht_set(table, test_cases[i].key, test_cases[i].value);
   }
 
@@ -262,15 +280,21 @@ void test_ht_remove_entry() {
     }
   }
 
-  print_table(table);
-
+  for (size_t i = 0; i < test_cases_len; i++) {
+    free(test_cases[i].key);
+    free(test_cases[i].value);
+  }
   free(test_cases);
+  test_cases = NULL;
+
   ht_destroy(table);
+  table = NULL;
 
   // printf("table->count: %zu\n", table->count);
 }
 
 void test_multiple_insertions_with_collision_and_increased_capacity() {
+  printf("test_multiple_insertions_with_collision_and_increased_capacity\n");
   ht *table = ht_create();
   printf("\n");
 
@@ -315,13 +339,22 @@ void test_multiple_insertions_with_collision_and_increased_capacity() {
       {"x", rand_int_ptr(), -1, fnv_index_16['x' - 'a'] + 1},
   };
 
-  add_items_in_table(table, (item *)test_cases, 4);
+  add_slot_tests_in_table(table, test_cases, 4);
   assert_all_values(table, test_cases, 4);
-  add_items_in_table(table, (item *)test_cases + 4, 4);
+  add_slot_tests_in_table(table, test_cases + 4, 4);
   assert_all_values(table, test_cases, 8);
+
+  for (size_t i = 0; i < sizeof(test_cases) / sizeof(slot_test_case_t); i++) {
+    free(test_cases[i].key);
+    free(test_cases[i].value);
+  }
+
+  ht_destroy(table);
+  table = NULL;
 }
 
 void test_ht_set_and_get() {
+  printf("test_ht_set_and_get\n");
   ht *table = ht_create();
 
   int items_num = 2000;
@@ -338,6 +371,13 @@ void test_ht_set_and_get() {
     TEST_ASSERT_EQUAL_INT(*(int *)items[i].value, *(int *)value);
   }
 
+  for (size_t i = 0; i < items_num; i++) {
+    free((void *)items[i].key);
+    free(items[i].value);
+  }
   free(items);
+  items = NULL;
+
   ht_destroy(table);
+  table = NULL;
 }

@@ -41,6 +41,8 @@ void ht_destroy(ht *table) {
   // First free allocated keys.
   for (size_t i = 0; i < table->capacity; i++) {
     free((void *)table->items[i].key);
+    table->items[i].key = NULL;
+    table->items[i].value = NULL;
   }
 
   // Then free entries array and table itself
@@ -66,7 +68,7 @@ static uint64_t hash(const char *key) {
 ht *ht_create(void) {
   ht *table = malloc(sizeof(ht));
   if (table == NULL) {
-    fprintf(stderr, "ht_create: table initialization: out of memory!\n");
+    fprintf(stderr, "ht_create:  table initialization: out of memory!\n");
     exit(EXIT_FAILURE);
   }
 
@@ -123,7 +125,6 @@ void ht_remove_entry(ht *table, const char *key) {
   while (table->items[index].key != NULL) {
     if (strcmp(table->items[index].key, key) == 0) {
       free((void *)table->items[index].key);
-      free(table->items[index].value);
       table->items[index].key = NULL;
       table->items[index].value = NULL;
 
@@ -158,7 +159,6 @@ void ht_remove_entry(ht *table, const char *key) {
 }
 
 static void allocate_memory(ht *table) {
-  printf("allocate_memory\n");
   // Allocate new items array.
   size_t new_capacity = table->capacity * 2;
   if (new_capacity < table->capacity) {
