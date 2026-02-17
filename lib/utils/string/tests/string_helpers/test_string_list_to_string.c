@@ -27,6 +27,7 @@ static void assert_case_tests(cases_store_t *cases_store) {
                                       cases_store->cases[i].len);
 
     TEST_ASSERT_EQUAL_STRING(cases_store->cases[i].expected, res);
+    free(res);
   }
 }
 

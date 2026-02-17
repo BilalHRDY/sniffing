@@ -74,6 +74,7 @@ ht *ht_create(void) {
 
   table->capacity = INITIAL_CAPACITY;
   table->items = calloc(table->capacity, sizeof(item));
+  table->count = 0;
 
   if (table->items == NULL) {
     fprintf(stderr, "ht_create: items initialization: out of memory!\n");

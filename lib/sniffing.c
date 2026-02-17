@@ -117,28 +117,34 @@ void packet_handler(u_char *user, const struct pcap_pkthdr *header,
 
 // pcap + ip
 static SNIFFING_API add_ip_in_filter(const char *ip, char **filter,
-                                     char *separator, int is_last_ip) {
-  *filter = realloc(*filter, strlen(*filter) + strlen(ip) + 1);
-  if (*filter == NULL) {
-    perror("add_ip_in_filter: realloc failed");
-    return SNIFFING_MEMORY_ERROR;
-  }
-  strcat(*filter, ip);
-  if (is_last_ip) {
-    *filter = realloc(*filter, strlen(*filter) + 2);
-    if (*filter == NULL) {
-      perror("add_ip_in_filter: realloc failed");
-      return SNIFFING_MEMORY_ERROR;
-    }
-    strcat(*filter, ")");
-  } else if (separator != NULL) {
-    *filter = realloc(*filter, strlen(*filter) + strlen(separator) + 1);
-    if (*filter == NULL) {
-      perror("add_ip_in_filter: realloc failed");
-      return SNIFFING_MEMORY_ERROR;
-    }
-    strcat(*filter, separator);
-  }
+                                     char *separator, bool is_last_ip) {
+  // *filter = realloc(*filter, strlen(*filter) + strlen(ip) + 1);
+  // if (*filter == NULL) {
+  //   perror("add_ip_in_filter: realloc failed");
+  //   return SNIFFING_MEMORY_ERROR;
+  // }
+  // strcat(*filter, ip);
+  // if (is_last_ip) {
+  //   *filter = realloc(*filter, strlen(*filter) + 2);
+  //   if (*filter == NULL) {
+  //     perror("add_ip_in_filter: realloc failed");
+  //     return SNIFFING_MEMORY_ERROR;
+  //   }
+  //   strcat(*filter, ")");
+  // } else if (separator != NULL) {
+  //   *filter = realloc(*filter, strlen(*filter) + strlen(separator) + 1);
+  //   if (*filter == NULL) {
+  //     perror("add_ip_in_filter: realloc failed");
+  //     return SNIFFING_MEMORY_ERROR;
+  //   }
+  //   strcat(*filter, separator);
+  // }
+
+  char *new_filter;
+  asprintf(&new_filter, "%s%s%s", *filter, ip, (is_last_ip ? ")" : separator));
+  free(*filter);
+  *filter = new_filter;
+
   return SNIFFING_OK;
 }
 
@@ -156,6 +162,7 @@ SNIFFING_API build_filter_from_ip_to_domain(ht *ip_to_domain, char **filter) {
 
     while (ht_next(&it)) {
       is_last_ip = (it.visited == ht_length(ip_to_domain));
+      printf("is_last_ip: %d\n", is_last_ip);
       if ((rc = add_ip_in_filter(it.key, filter, separator, is_last_ip)) !=
           SNIFFING_OK) {
         return rc;

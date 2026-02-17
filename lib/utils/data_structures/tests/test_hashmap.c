@@ -149,16 +149,19 @@ void test_capacity_and_count() {
   size_t expected_capacity = INITIAL_CAPACITY;
   for (size_t i = 0; i < 20000; i++) {
     assert_count_and_capacity(i, expected_capacity, table);
-    ht_set(table, rand_str(5), rand_int_ptr());
+    char *key = rand_str(5);
+    ht_set(table, key, rand_int_ptr());
 
     if (i + 1 > expected_capacity / 2) {
       expected_capacity *= 2;
     }
+    free(key);
   }
 
-  for (size_t i = 0; i < 20000; i++) {
+  for (size_t i = 0; i < table->capacity; i++) {
     if (table->items[i].key != NULL) {
       free(table->items[i].value);
+      table->items[i].value = NULL;
     }
   }
 
@@ -345,8 +348,8 @@ void test_multiple_insertions_with_collision_and_increased_capacity() {
   assert_all_values(table, test_cases, 8);
 
   for (size_t i = 0; i < sizeof(test_cases) / sizeof(slot_test_case_t); i++) {
-    free(test_cases[i].key);
     free(test_cases[i].value);
+    test_cases[i].value = NULL;
   }
 
   ht_destroy(table);
@@ -373,7 +376,9 @@ void test_ht_set_and_get() {
 
   for (size_t i = 0; i < items_num; i++) {
     free((void *)items[i].key);
+    items[i].key = NULL;
     free(items[i].value);
+    items[i].value = NULL;
   }
   free(items);
   items = NULL;

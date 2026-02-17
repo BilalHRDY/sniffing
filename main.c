@@ -38,9 +38,11 @@ int main() {
 
   domain_cache_t cache;
   ht *ip_to_domain = ht_create();
+  printf("ip_to_domain->count: %zu\n", ip_to_domain->count);
   cache.ip_to_domain = ip_to_domain;
   char **hostnames;
   cache.hostnames = hostnames;
+  ctx->filter = NULL;
 
   ctx->domain_cache = &cache;
 
@@ -60,7 +62,6 @@ int main() {
       .packet_ctx = (void *)&protocol_ctx};
 
   pthread_t *server_thread = init_server(&packet_handler_server_ctx);
-
   init_pcap(ctx);
 
   int pcap_thread_res =
