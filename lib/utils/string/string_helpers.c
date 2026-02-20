@@ -41,7 +41,8 @@ bool is_string_in_array(char *target, char **to_compare, int len) {
 bool strings_equal(char *s1, char *s2) { return strcmp(s1, s2) == 0; }
 
 char *string_list_to_string(char *list[], unsigned int len) {
-  size_t total_len = 1; // '\0'
+  size_t total_len = len - 1; // for the " " separator
+  total_len++;                // for \0
   for (size_t i = 0; i < len; i++) {
     total_len += strlen(list[i]);
   }

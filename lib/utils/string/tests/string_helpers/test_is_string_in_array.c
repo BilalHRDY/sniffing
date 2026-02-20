@@ -38,6 +38,11 @@ void assert_is_string_in_array_test(cases_store_t *cases_store) {
 
 static void add_to_store(char **array, size_t len, char *target, bool expected,
                          cases_store_t *cases_store) {
+  char **copy = malloc(len * sizeof(char *));
+
+  for (size_t i = 0; i < len; i++) {
+    copy[i] = array[i];
+  }
 
   cases_store->cases =
       realloc(cases_store->cases, (cases_store->len + 1) * sizeof(case_t));

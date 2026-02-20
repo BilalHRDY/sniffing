@@ -1,6 +1,7 @@
 #include "../../string_helpers.h"
 #include "unity.h"
 #include <stdlib.h>
+#include <string.h>
 
 #define ADD_CASE_TO_STORE(cases_store, expected, ...)                          \
   do {                                                                         \
@@ -33,6 +34,11 @@ static void assert_case_tests(cases_store_t *cases_store) {
 
 static void add_to_store(cases_store_t *cases_store, char *expected,
                          char **input, size_t input_len) {
+  char **copy = malloc(input_len * sizeof(char *));
+
+  for (size_t i = 0; i < input_len; i++) {
+    copy[i] = input[i];
+  }
 
   cases_store->cases =
       realloc(cases_store->cases, (cases_store->len + 1) * sizeof(case_t));
@@ -43,14 +49,13 @@ static void add_to_store(cases_store_t *cases_store, char *expected,
   }
 
   cases_store->cases[cases_store->len++] =
-      (case_t){.words = input, .len = input_len, .expected = expected};
+      (case_t){.words = copy, .len = input_len, .expected = expected};
 };
 
 void test_string_list_to_string() {
   printf("test_string_list_to_string\n");
   cases_store_t cases_store = {0};
-  char *input1 = "abc aertry e";
-  ADD_CASE_TO_STORE(&cases_store, input1, "abc", "aertry", "e");
+
   ADD_CASE_TO_STORE(&cases_store, "abc aertry e", "abc", "aertry", "e");
 
   ADD_CASE_TO_STORE(
@@ -76,5 +81,10 @@ void test_string_list_to_string() {
 
   assert_case_tests(&cases_store);
 
-  free(cases_store.cases);
+  for (size_t i = 0; i < cases_store.len; i++) {
+    free(cases_store.cases[i].words);
+  }
+
+  // free(cases_store.cases);
+  cases_store.cases = NULL;
 }
