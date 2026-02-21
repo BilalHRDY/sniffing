@@ -107,8 +107,7 @@ else
   TARGET_EXTENSION=out
 endif
 
-COMPILE_FOR_TESTS=$(COMPILER) $(CFLAG_DEBUG) -c $(CFLAG_VERSION) -I$(PATH_UNITY)
-LINK=$(COMPILER)
+COMPILE_FOR_TESTS=$(COMPILER) $(DEBUG_SAN_FLAGS) -I$(PATH_UNITY) -c
 
 RUNNER_NAME = test_runner
 
@@ -136,23 +135,23 @@ test: $(RESULT_TXT)
 
 $(RESULT_TXT): $(RESULT_EXE)
 	@echo "\n[TESTING: Execute $*.$(TARGET_EXTENSION)]"
-	./$< > $@ 2>&1
+# 	$(LEAK_OPTION) ./$< > $@ 2>&1
 # 	-./$< > $@ 2>&1
-# 	./$< 2>&1 | tee $@
+	$(LEAK_OPTION) ./$< 2>&1 | tee $@
 
 $(RESULT_EXE): \
 	$(OBJLIB_WITH_TESTS) \
 	$(PATH_BUILD_TEST_OBJ)unity.o
 	@echo "\n[TESTING: Linking for $*]"
-	$(LINK) -o $@ $^ $(EXT_DEP)
+	$(COMPILER) $(DEBUG_SAN_FLAGS) $(EXT_DEP) $^ -o $@
 
 $(PATH_BUILD_TEST_OBJ)%.o: %.c
-	@echo "\n[TESTING: Compiling source files] $< -> $@"
+	@echo "\n[TESTING: Compiling for $@]"
 	@mkdir -p $(dir $@)
-	$(COMPILE_FOR_TESTS) $< -o $@
+	$(COMPILE_FOR_TESTS) $< -o $@  
 
 $(PATH_BUILD_TEST_OBJ)unity.o: $(PATH_UNITY)unity.c $(PATH_UNITY)unity.h
-	@echo "\n[TESTING: Compiling Unity files] $< -> $@"
+	@echo "\n[TESTING: Compiling for $@]"
 	$(COMPILE_FOR_TESTS) $< -o $@
 
 clean:
