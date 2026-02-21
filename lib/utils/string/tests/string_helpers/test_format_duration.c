@@ -4,7 +4,6 @@
 #include <string.h>
 
 void test_format_duration() {
-  printf("test_format_duration\n");
   char *output = format_duration(0);
   TEST_ASSERT_EQUAL_STRING("0d 0h 0m 0s", output);
   free(output);

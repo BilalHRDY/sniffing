@@ -39,6 +39,10 @@ void assert_is_string_in_array_test(cases_store_t *cases_store) {
 static void add_to_store(char **array, size_t len, char *target, bool expected,
                          cases_store_t *cases_store) {
   char **copy = malloc(len * sizeof(char *));
+  if (copy == NULL) {
+    fprintf(stderr, "add_to_store: malloc failed!\n");
+    exit(EXIT_FAILURE);
+  }
 
   for (size_t i = 0; i < len; i++) {
     copy[i] = array[i];
@@ -53,11 +57,10 @@ static void add_to_store(char **array, size_t len, char *target, bool expected,
   }
 
   cases_store->cases[cases_store->len++] = (case_t){
-      .words = array, .len = len, .target = target, .expected = expected};
+      .words = copy, .len = len, .target = target, .expected = expected};
 };
 
 void test_is_string_in_array() {
-  printf("test_is_string_in_array\n");
   cases_store_t cases_store = {0};
 
   ADD_CASE_TO_STORE(&cases_store, "abc", true, "aqsd", "df", "abc");
@@ -94,5 +97,10 @@ void test_is_string_in_array() {
 
   assert_is_string_in_array_test(&cases_store);
 
+  for (size_t i = 0; i < cases_store.len; i++) {
+    free(cases_store.cases[i].words);
+  }
+
   free(cases_store.cases);
+  cases_store.cases = NULL;
 }

@@ -114,8 +114,6 @@ void assert_item_equals_expected(item *expected_item, item *item) {
 
 void assert_all_values(ht *table, slot_test_case_t *test_cases,
                        size_t test_cases_len) {
-  printf("assert_all_values: \n");
-
   for (size_t i = 0; i < table->capacity; i++) {
 
     slot_test_case_t *test_case =
@@ -130,7 +128,6 @@ void assert_all_values(ht *table, slot_test_case_t *test_cases,
 }
 
 void test_ht_create() {
-  printf("test_ht_create\n");
   ht *table = ht_create();
   TEST_ASSERT_NOT_NULL(table);
   TEST_ASSERT_NOT_NULL(table->items);
@@ -143,17 +140,19 @@ void test_ht_create() {
 }
 
 void test_capacity_and_count() {
-  printf("test_capacity_and_count\n");
   ht *table = ht_create();
 
   size_t expected_capacity = INITIAL_CAPACITY;
+  size_t expected_count = 0;
   for (size_t i = 0; i < 20000; i++) {
-    assert_count_and_capacity(i, expected_capacity, table);
+    assert_count_and_capacity(expected_count, expected_capacity, table);
     char *key = rand_str(5);
-    ht_set(table, key, rand_int_ptr());
 
-    if (i + 1 > expected_capacity / 2) {
-      expected_capacity *= 2;
+    if (!ht_get(table, key)) {
+      ht_set(table, key, rand_int_ptr());
+      if (++expected_count > expected_capacity / 2) {
+        expected_capacity *= 2;
+      }
     }
     free(key);
   }
@@ -170,7 +169,6 @@ void test_capacity_and_count() {
 }
 
 void test_modify_item() {
-  printf("test_modify_item\n");
   ht *table = ht_create();
 
   size_t test_cases_len = 100;
@@ -233,35 +231,8 @@ int fnv_index_16[26] = {
 };
 
 void test_ht_remove_entry() {
-  printf("test_ht_remove_entry\n");
   ht *table = ht_create();
-
-  // 0 1 2 3 4 5 6 7
-  // x e _ _ _ _ w g
-  ht_remove_entry(table, "no_existing_item");
-  assert_count_and_capacity(0, INITIAL_CAPACITY, table);
-  int *value_1 = rand_int_ptr();
-  ht_set(table, "one_item", value_1);
-  ht_remove_entry(table, "one_item");
-  assert_count_and_capacity(0, INITIAL_CAPACITY, table);
-  TEST_ASSERT_NULL(ht_get(table, "one_item"));
-  free(value_1);
-
-  value_1 = rand_int_ptr();
-  ht_set(table, "one_item", value_1);
-  ht_set(table, "second_item", value_1);
-  ht_remove_entry(table, "second_item");
-  assert_count_and_capacity(1, INITIAL_CAPACITY, table);
-  TEST_ASSERT_NOT_NULL(ht_get(table, "one_item"));
-  TEST_ASSERT_NULL(ht_get(table, "second_item"));
-  free(value_1);
-
-  // Be careful: pointers stored from rand_int_ptr() are not being freed.
-  ht_destroy(table);
-
-  table = ht_create();
-
-  size_t test_cases_len = 20;
+  size_t test_cases_len = 1000;
 
   remove_test_case_t *test_cases =
       malloc(sizeof(remove_test_case_t) * test_cases_len);
@@ -292,12 +263,9 @@ void test_ht_remove_entry() {
 
   ht_destroy(table);
   table = NULL;
-
-  // printf("table->count: %zu\n", table->count);
 }
 
-void test_multiple_insertions_with_collision_and_increased_capacity() {
-  printf("test_multiple_insertions_with_collision_and_increased_capacity\n");
+void test_multiple_insertions_with_collision() {
   ht *table = ht_create();
   printf("\n");
 
@@ -357,7 +325,6 @@ void test_multiple_insertions_with_collision_and_increased_capacity() {
 }
 
 void test_ht_set_and_get() {
-  printf("test_ht_set_and_get\n");
   ht *table = ht_create();
 
   int items_num = 2000;

@@ -35,6 +35,10 @@ static void assert_case_tests(cases_store_t *cases_store) {
 static void add_to_store(cases_store_t *cases_store, char *expected,
                          char **input, size_t input_len) {
   char **copy = malloc(input_len * sizeof(char *));
+  if (copy == NULL) {
+    fprintf(stderr, "add_to_store: malloc failed!\n");
+    exit(EXIT_FAILURE);
+  }
 
   for (size_t i = 0; i < input_len; i++) {
     copy[i] = input[i];
@@ -53,7 +57,6 @@ static void add_to_store(cases_store_t *cases_store, char *expected,
 };
 
 void test_string_list_to_string() {
-  printf("test_string_list_to_string\n");
   cases_store_t cases_store = {0};
 
   ADD_CASE_TO_STORE(&cases_store, "abc aertry e", "abc", "aertry", "e");
@@ -85,6 +88,6 @@ void test_string_list_to_string() {
     free(cases_store.cases[i].words);
   }
 
-  // free(cases_store.cases);
+  free(cases_store.cases);
   cases_store.cases = NULL;
 }
