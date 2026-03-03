@@ -9,10 +9,10 @@ typedef enum {
 
 } STR_CODE_ERROR;
 
-STR_CODE_ERROR extract_words(char *str, char ***words, int *words_len);
+void free_string_array(char *array[], size_t len);
+STR_CODE_ERROR extract_words(char *str, char ***words, size_t *words_len);
 bool is_string_in_array(char *target, char **to_compare, int len);
-bool has_null_terminator(const char *s);
-bool strings_equal(char *s1, char *s2);
+bool strings_equal(const char *s1, const char *s2);
 char *string_list_to_string(char *list[], unsigned int len);
 char *format_duration(size_t seconds);
 

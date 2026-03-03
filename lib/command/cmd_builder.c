@@ -5,91 +5,106 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO
-//   typedef struct {
-//     const char *start;
-//     const char *stop;
-//     const char *status;
-// } protocol_strings_t;
+typedef struct {
+  const char *hostname;
+  const char *add;
+  const char *list;
+  const char *server;
+  const char *start;
+  const char *stop;
+  const char *stats;
+} verbs_t;
 
-// static const protocol_strings_t PROTO = {
-//     .start = "START",
-//     .stop = "STOP",
-//     .status = "STATUS"
-// };
+static const verbs_t verbs = {.hostname = "hostname",
+                              .add = "add",
+                              .list = "list",
+                              .server = "server",
+                              .start = "start",
+                              .stop = "stop",
+                              .stats = "stats"};
 
-// usage
-// printf("%s\n", PROTO.start);
+static CMD_BUILDER_CODE unknown_command(command_t **cmd, char *words[],
+                                        int len) {
+  free(*cmd);
+  char *cmd_str = string_list_to_string(words, len);
+  printf("Unknown command: \"%s\"\n", cmd_str);
+  free(cmd_str);
+  return CMD_BUILDER_UNKNOWN_CMD;
+}
+
+static CMD_BUILDER_CODE incomplete_command(command_t **cmd, char *words[],
+                                           int len) {
+  free(*cmd);
+  char *cmd_str = string_list_to_string(words, len);
+  printf("Incomplete command (missing arguments): \"%s\"\n", cmd_str);
+  free(cmd_str);
+  return CMD_BUILDER_MISSING_VERB;
+}
+
 static CMD_BUILDER_CODE words_to_cmd(char *words[], int len, command_t **cmd) {
   printf("words_to_cmd\n");
+  if (words == NULL) {
+    return CMD_BUILDER_ERROR;
+  }
+
   *cmd = malloc(sizeof(command_t));
   if (*cmd == NULL) {
     perror("words_to_cmd: malloc failed!");
+    exit(EXIT_FAILURE);
   }
   memset(*cmd, 0, sizeof(command_t));
 
   char *verb = words[0];
 
-  if (strings_equal(verb, "hostname")) {
-    // char **args = words + 2;
+  if (strings_equal(verb, verbs.hostname)) {
     if (len < 2) {
-      printf("Command incomplete!\n");
-      return CMD_BUILDER_MISSING_VERB;
-    }
-    if (strings_equal(words[1], "add")) {
-      printf("len: %d\n", len);
+      return incomplete_command(cmd, words, 1);
+    } else if (strings_equal(words[1], verbs.add)) {
       int args_len = len - 2;
-      (*cmd)->code = CMD_HOSTNAME_ADD;
-      if (args_len > 0) {
-        (*cmd)->raw_args = string_list_to_string(words + 2, args_len);
+      if (args_len <= 0) {
+        return incomplete_command(cmd, words, 2);
       }
+      (*cmd)->code = CMD_HOSTNAME_ADD;
 
-    } else if (strings_equal(words[1], "list")) {
+      (*cmd)->raw_args = string_list_to_string(words + 2, args_len);
+
+    } else if (strings_equal(words[1], verbs.list)) {
       (*cmd)->code = CMD_HOSTNAME_LIST;
     } else {
-      printf("Unknown command!\n");
-      return CMD_BUILDER_UNKNOWN_CMD;
+      return unknown_command(cmd, words, 2);
     }
 
-  } else if (strings_equal(verb, "server")) {
+  } else if (strings_equal(verb, verbs.server)) {
     if (len < 2) {
-      printf("Command incomplete!\n");
-      return CMD_BUILDER_MISSING_VERB;
+      return incomplete_command(cmd, words, 1);
     }
-    if (strings_equal(words[1], "start")) {
+    if (strings_equal(words[1], verbs.start)) {
       (*cmd)->code = CMD_SERVER_START;
 
-    } else if (strings_equal(words[1], "stop")) {
+    } else if (strings_equal(words[1], verbs.stop)) {
       (*cmd)->code = CMD_SERVER_STOP;
     } else {
-      printf("Unknown command!\n");
-      return CMD_BUILDER_UNKNOWN_CMD;
+      return unknown_command(cmd, words, 2);
     }
-  } else if (strings_equal(verb, "stats")) {
+  } else if (strings_equal(verb, verbs.stats)) {
     (*cmd)->code = CMD_GET_STATS;
 
   } else {
-    printf("Unknown command!\n");
-    return CMD_BUILDER_UNKNOWN_CMD;
+    return unknown_command(cmd, words, 1);
   }
   return CMD_BUILDER_OK;
 }
 
 CMD_BUILDER_CODE build_cmd_from_str(char *data, command_t **cmd) {
-  char **words = malloc(sizeof(char *));
-  if (words == NULL) {
-    fprintf(stderr, "build_cmd_from_str: malloc failed!\n");
-    return CMD_BUILDER_ERROR;
-  }
+  char **words = NULL;
 
-  int words_len;
+  CMD_BUILDER_CODE rc = CMD_BUILDER_ERROR;
+  size_t words_len = 0;
+  if (extract_words(data, &words, &words_len) == STR_CODE_OK &&
+      words_to_cmd(words, words_len, cmd) == CMD_BUILDER_OK) {
+    rc = CMD_BUILDER_OK;
+  }
+  free_string_array(words, words_len);
 
-  STR_CODE_ERROR rc = extract_words(data, &words, &words_len);
-  if (rc != STR_CODE_OK) {
-    return CMD_BUILDER_ERROR;
-  }
-  if (words_to_cmd(words, words_len, cmd) != CMD_BUILDER_OK) {
-    return CMD_BUILDER_ERROR;
-  }
-  return CMD_BUILDER_OK;
+  return rc;
 }

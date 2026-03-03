@@ -3,11 +3,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+void free_string_array(char *array[], size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    free(array[i]);
+  }
+  free(array);
+  array = NULL;
+}
+
 // TODO: Instead of using a words_len variable, try turning 'words' into a
 // NULL-terminated array so that it can later be iterated over without needing
 // words_len.
 // Use of regex ?
-STR_CODE_ERROR extract_words(char *str, char ***words, int *words_len) {
+STR_CODE_ERROR extract_words(char *str, char ***words, size_t *words_len) {
 
   const char *separators = " ";
   *words_len = 0;
@@ -15,11 +23,13 @@ STR_CODE_ERROR extract_words(char *str, char ***words, int *words_len) {
   char *str_token = strtok(str, separators);
 
   while (str_token != NULL) {
-    *words = realloc(*words, sizeof(char *) * (*words_len + 1));
-    if (*words == NULL) {
-      fprintf(stderr, "extract_words: realloc failed!\n");
+    char **tmp = realloc(*words, sizeof(char *) * (*words_len + 1));
+    if (tmp == NULL) {
+      perror("extract_words: realloc failed!");
+      free_string_array(*words, *words_len);
       return STR_CODE_MALLOC_ERR;
     }
+    *words = tmp;
     (*words)[(*words_len)++] = strdup(str_token);
 
     str_token = strtok(NULL, separators);
@@ -38,7 +48,9 @@ bool is_string_in_array(char *target, char **to_compare, int len) {
   return false;
 };
 
-bool strings_equal(char *s1, char *s2) { return strcmp(s1, s2) == 0; }
+bool strings_equal(const char *s1, const char *s2) {
+  return strcmp(s1, s2) == 0;
+}
 
 char *string_list_to_string(char *list[], unsigned int len) {
   size_t total_len = len - 1; // for the " " separator

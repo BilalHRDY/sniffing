@@ -22,7 +22,7 @@ typedef struct {
   size_t len;
 } cases_store_t;
 
-void assert_is_string_in_array_test(cases_store_t *cases_store) {
+static void assert_is_string_in_array_test(cases_store_t *cases_store) {
   for (size_t i = 0; i < cases_store->len; i++) {
 
     bool res = is_string_in_array(cases_store->cases[i].target,

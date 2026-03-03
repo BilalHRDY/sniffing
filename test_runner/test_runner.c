@@ -17,6 +17,7 @@ int main(void) {
   RUN_TEST(test_ht_set_and_get);
   RUN_TEST(test_modify_item);
   RUN_TEST(test_ht_remove_entry);
+  RUN_TEST(test_build_cmd_from_str);
 
   UNITY_END();
 

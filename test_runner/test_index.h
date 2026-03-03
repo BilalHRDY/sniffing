@@ -11,5 +11,6 @@ void test_ht_set_and_get();
 void test_capacity_and_count();
 void test_modify_item();
 void test_ht_remove_entry();
+void test_build_cmd_from_str();
 
 #endif

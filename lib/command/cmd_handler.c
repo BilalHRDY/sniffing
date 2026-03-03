@@ -61,7 +61,7 @@ SNIFFING_API process_add_hosts_to_listen_cmd(char *raw_args, char *cmd_res,
     return SNIFFING_MEMORY_ERROR;
   }
 
-  int hostnames_len;
+  size_t hostnames_len;
   STR_CODE_ERROR rc = extract_words(raw_args, &hostnames, &hostnames_len);
   if (rc != STR_CODE_OK) {
     return SNIFFING_INTERNAL_ERROR;

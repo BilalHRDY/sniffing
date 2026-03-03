@@ -3,15 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-void assert_extract_words_test(char *input, int expected_len,
-                               char *expected[]) {
+static void assert_extract_words_test(char *input, int expected_len,
+                                      char *expected[]) {
   char **output = malloc(sizeof(char *));
   if (output == NULL) {
     fprintf(stderr, "assert_extract_words_test: malloc failed!\n");
     return;
   }
+  output[0] = NULL;
   char *buf = NULL;
-  int words_len = 0;
+  size_t words_len = 0;
 
   if (input) {
     buf = malloc(strlen(input) + 1);
@@ -26,6 +27,13 @@ void assert_extract_words_test(char *input, int expected_len,
 
   TEST_ASSERT_EQUAL_INT(STR_CODE_OK, rc);
   TEST_ASSERT_EQUAL_INT(expected_len, words_len);
+  if (expected_len == 0) {
+    TEST_ASSERT_NULL(*output);
+    free(output);
+    free(buf);
+    return;
+  }
+
   TEST_ASSERT_EQUAL_STRING_ARRAY(expected, output, expected_len);
 
   if (words_len == 0) {
@@ -62,4 +70,7 @@ void test_extract_words() {
   assert_extract_words_test(
       " !\"§ $ %& /() =?* '<> #|; 😀😅😅    ²³~ @`´ ©  «» ¤¼× {}   ", 14,
       expected_4);
+
+  char *expected_5[] = {""};
+  assert_extract_words_test("", 0, expected_5);
 }
