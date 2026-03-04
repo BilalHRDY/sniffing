@@ -27,7 +27,7 @@ static CMD_BUILDER_CODE unknown_command(command_t **cmd, char *words[],
                                         int len) {
   free(*cmd);
   char *cmd_str = string_list_to_string(words, len);
-  printf("Unknown command: \"%s\"\n", cmd_str);
+  fprintf(stderr, "Unknown command: \"%s\"\n", cmd_str);
   free(cmd_str);
   return CMD_BUILDER_UNKNOWN_CMD;
 }
@@ -36,20 +36,20 @@ static CMD_BUILDER_CODE incomplete_command(command_t **cmd, char *words[],
                                            int len) {
   free(*cmd);
   char *cmd_str = string_list_to_string(words, len);
-  printf("Incomplete command (missing arguments): \"%s\"\n", cmd_str);
+  fprintf(stderr, "Incomplete command(missing arguments) : \"%s\"\n", cmd_str);
+
   free(cmd_str);
   return CMD_BUILDER_MISSING_VERB;
 }
 
 static CMD_BUILDER_CODE words_to_cmd(char *words[], int len, command_t **cmd) {
-  printf("words_to_cmd\n");
   if (words == NULL) {
     return CMD_BUILDER_ERROR;
   }
 
   *cmd = malloc(sizeof(command_t));
   if (*cmd == NULL) {
-    perror("words_to_cmd: malloc failed!");
+    fprintf(stderr, "words_to_cmd: malloc failed!\n");
     exit(EXIT_FAILURE);
   }
   memset(*cmd, 0, sizeof(command_t));
