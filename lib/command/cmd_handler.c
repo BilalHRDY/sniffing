@@ -118,7 +118,7 @@ SNIFFING_API process_raw_cmd(char *raw_cmd, int raw_cmd_len, char *cmd_res,
   context_t *ctx = (context_t *)user_data;
   command_t cmd;
 
-  if (deserialize_cmd(raw_cmd, raw_cmd_len, &cmd) != DESERIALIZATION_OK) {
+  if (deserialize_cmd(raw_cmd, raw_cmd_len, &cmd) != SERIALIZATION_OK) {
     return SNIFFING_INTERNAL_ERROR;
   }
 

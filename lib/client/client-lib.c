@@ -34,14 +34,15 @@ static void read_input(input_buffer_t *input_buf) {
 }
 
 CLIENT_CODE build_cmd_for_request(char *input, protocol_request_t *req) {
-  printf("build_cmd_for_request\n");
   command_t *cmd;
-  // TODO traiter si erreur de build_cmd_from_str
   if (build_cmd_from_str(input, &cmd) != CMD_BUILDER_OK) {
     return CLIENT_ERROR;
   }
-  req->header.body_len = serialize_cmd(cmd, req->body);
-  printf(" req->header.body_len: %d\n", req->header.body_len);
+
+  if (serialize_cmd(cmd, req->body, sizeof(req->body),
+                    &(req->header.body_len)) != SERIALIZATION_OK) {
+    return CLIENT_ERROR;
+  }
   return CLIENT_OK;
 }
 

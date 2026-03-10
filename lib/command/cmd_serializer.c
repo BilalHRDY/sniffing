@@ -5,21 +5,29 @@
 #include <stdlib.h>
 #include <string.h>
 
-serialized_len serialize_cmd(command_t *cmd, char *dest) {
-
+SERIALIZATION_STATUS serialize_cmd(command_t *cmd, char *output,
+                                   size_t output_len, size_t *size) {
   int code_len = sizeof(cmd->code);
   int args_len = cmd->raw_args != NULL ? strlen(cmd->raw_args) + 1 : 0;
-  char *p = dest;
+
+  if (code_len + args_len > output_len) {
+    fprintf(stderr, "serialize_cmd: buffer too small\n");
+    return SERIALIZATION_BUFFER_OVER_ERROR;
+  }
+
+  char *p = output;
   memcpy(p, &cmd->code, code_len);
 
   p += code_len;
 
   memcpy(p, cmd->raw_args, args_len);
-  return code_len + args_len;
+
+  *size = code_len + args_len;
+  return SERIALIZATION_OK;
 }
 
-DESERIALIZATION_STATUS deserialize_cmd(char *raw_cmd, int raw_cmd_len,
-                                       command_t *cmd) {
+SERIALIZATION_STATUS deserialize_cmd(char *raw_cmd, int raw_cmd_len,
+                                     command_t *cmd) {
   char *p;
   p = raw_cmd;
   int code_len = sizeof(cmd->code);
@@ -33,9 +41,9 @@ DESERIALIZATION_STATUS deserialize_cmd(char *raw_cmd, int raw_cmd_len,
   // todo: free
   cmd->raw_args = malloc(args_len);
   if (cmd->raw_args == NULL) {
-    perror("deserialize_cmd: malloc failed!");
-    return DESERIALIZATION_MALLOC_ERROR;
+    fprintf(stderr, "deserialize_cmd: malloc failed\n");
+    return SERIALIZATION_BUFFER_OVER_ERROR;
   }
   memcpy(cmd->raw_args, p, args_len);
-  return DESERIALIZATION_OK;
+  return SERIALIZATION_OK;
 }
