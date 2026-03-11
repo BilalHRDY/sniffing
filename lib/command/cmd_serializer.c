@@ -36,14 +36,15 @@ SERIALIZATION_STATUS deserialize_cmd(char *raw_cmd, int raw_cmd_len,
 
   p += code_len;
   int args_len = raw_cmd_len - code_len;
-  // printf("args_len: %d\n", args_len);
 
   // todo: free
-  cmd->raw_args = malloc(args_len);
-  if (cmd->raw_args == NULL) {
-    fprintf(stderr, "deserialize_cmd: malloc failed\n");
-    return SERIALIZATION_BUFFER_OVER_ERROR;
+  if (args_len > 0) {
+    cmd->raw_args = malloc(args_len);
+    if (cmd->raw_args == NULL) {
+      fprintf(stderr, "deserialize_cmd: malloc failed\n");
+      return SERIALIZATION_MALLOC_ERROR;
+    }
+    memcpy(cmd->raw_args, p, args_len);
   }
-  memcpy(cmd->raw_args, p, args_len);
   return SERIALIZATION_OK;
 }

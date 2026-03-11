@@ -14,7 +14,7 @@ typedef enum {
 } PROTOCOL_CODE;
 
 typedef struct header {
-  unsigned int body_len;
+  size_t body_len;
   PROTOCOL_CODE response_status;
 } header_t;
 

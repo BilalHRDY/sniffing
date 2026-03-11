@@ -6,7 +6,7 @@
 #include "cmd.h"
 
 SNIFFING_API process_raw_cmd(char *raw_cmd, int raw_cmd_len,
-                             char (*res)[DATA_SIZE], unsigned *res_len,
+                             char (*res)[DATA_SIZE], unsigned int *res_len,
                              unsigned char *user_data);
 
 #endif

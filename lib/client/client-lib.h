@@ -17,7 +17,6 @@ typedef struct {
   ssize_t input_length;
 } input_buffer_t;
 
-typedef void (*input_handler_t)(char *input, data_to_send_t *data_to_send);
 typedef void (*packet_handle_response_t)(unsigned char buf[BUF_SIZE],
                                          ssize_t res_len, void *data);
 

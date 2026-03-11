@@ -13,5 +13,7 @@ void test_modify_item();
 void test_ht_remove_entry();
 void test_build_cmd_from_str();
 void test_serialize_cmd();
+void test_deserialize_cmd();
+void test_serialization_cmd_trip_around();
 
 #endif

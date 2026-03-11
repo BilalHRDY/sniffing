@@ -33,6 +33,7 @@ static void read_input(input_buffer_t *input_buf) {
   input_buf->buffer[bytes_read - 1] = 0;
 }
 
+// Move this function in command.c ?
 CLIENT_CODE build_cmd_for_request(char *input, protocol_request_t *req) {
   command_t *cmd;
   if (build_cmd_from_str(input, &cmd) != CMD_BUILDER_OK) {
