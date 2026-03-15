@@ -1,3 +1,4 @@
+// #include "./protocol.h"
 #include "../../types.h"
 #include "../../utils/string/dynamic_string.h"
 #include "../../utils/string/string_helpers.h"
@@ -10,11 +11,12 @@
 // request
 // TODO : changer pour PROTOCOL_CODE
 PROTOCOL_CODE verify_packet(unsigned char pck[BUF_SIZE], ssize_t pck_len) {
+  if (pck_len < sizeof(header_t)) {
+    return PROTOCOL_INVALID_PACKET_LENGTH;
+  }
   header_t *h = (header_t *)pck;
   if (pck_len != sizeof(header_t) + h->body_len) {
-    printf("pck_len: %zu\n", pck_len);
     fprintf(stderr, "verify_packet : Invalid length of packet\n");
-
     return PROTOCOL_INVALID_PACKET_LENGTH;
   }
   return PROTOCOL_OK;
@@ -24,7 +26,7 @@ PROTOCOL_CODE deserialize_request(unsigned char buf[BUF_SIZE], ssize_t req_len,
                                   protocol_request_t *req) {
   if (req == NULL) {
     // fprintf(stderr, "deserialize_request: malloc failed!\n");
-    return PROTOCOL_MALLOC_ERR;
+    return PROTOCOL_ERR;
   }
   if (verify_packet(buf, req_len) != PROTOCOL_OK) {
     return PROTOCOL_INVALID_PACKET_LENGTH;
@@ -60,10 +62,9 @@ void protocol_handle_response(unsigned char pck[BUF_SIZE], ssize_t pck_len,
 // request_handler.
 void protocol_handle_request(unsigned char pck[BUF_SIZE], ssize_t pck_len,
                              data_to_send_t *data_to_send, void *data) {
-  // ***TODO : deserialize request***
+
   protocol_ctx_t *protocol_ctx = (protocol_ctx_t *)data;
   request_handler_t request_handler = protocol_ctx->request_handler;
-  // protocol_request_t *res = malloc(sizeof(protocol_request_t));
 
   PROTOCOL_CODE rc;
   protocol_request_t received_req;
@@ -75,9 +76,6 @@ void protocol_handle_request(unsigned char pck[BUF_SIZE], ssize_t pck_len,
   } else {
     request_handler(&received_req, res, protocol_ctx->user_data);
     res->header.response_status = PROTOCOL_OK;
-
-    // free(req);
   }
-  // data_to_send->data = (unsigned char *)res;
   data_to_send->len = sizeof(header_t) + res->header.body_len;
 }

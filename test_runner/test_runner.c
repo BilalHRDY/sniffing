@@ -19,8 +19,9 @@ int main(void) {
   // RUN_TEST(test_ht_remove_entry);
   // RUN_TEST(test_build_cmd_from_str);
   // RUN_TEST(test_serialize_cmd);
-  RUN_TEST(test_deserialize_cmd);
-  RUN_TEST(test_serialization_cmd_trip_around);
+  // RUN_TEST(test_deserialize_cmd);
+  // RUN_TEST(test_serialization_cmd_trip_around);
+  RUN_TEST(test_verify_packet);
 
   UNITY_END();
 

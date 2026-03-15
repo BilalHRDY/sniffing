@@ -15,5 +15,6 @@ void test_build_cmd_from_str();
 void test_serialize_cmd();
 void test_deserialize_cmd();
 void test_serialization_cmd_trip_around();
+void test_verify_packet();
 
 #endif

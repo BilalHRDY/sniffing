@@ -39,11 +39,12 @@ CLIENT_CODE build_cmd_for_request(char *input, protocol_request_t *req) {
   if (build_cmd_from_str(input, &cmd) != CMD_BUILDER_OK) {
     return CLIENT_ERROR;
   }
-
-  if (serialize_cmd(cmd, req->body, sizeof(req->body),
-                    &(req->header.body_len)) != SERIALIZATION_OK) {
+  size_t size = 0;
+  if (serialize_cmd(cmd, req->body, sizeof(req->body), &(size)) !=
+      SERIALIZATION_OK) {
     return CLIENT_ERROR;
   }
+  req->header.body_len = size;
   return CLIENT_OK;
 }
 
