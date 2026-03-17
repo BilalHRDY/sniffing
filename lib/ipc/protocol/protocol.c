@@ -22,16 +22,15 @@ PROTOCOL_CODE verify_packet(unsigned char pck[BUF_SIZE], ssize_t pck_len) {
   return PROTOCOL_OK;
 }
 
-PROTOCOL_CODE deserialize_request(unsigned char buf[BUF_SIZE], ssize_t req_len,
+PROTOCOL_CODE deserialize_request(unsigned char buf[BUF_SIZE], ssize_t buf_len,
                                   protocol_request_t *req) {
   if (req == NULL) {
-    // fprintf(stderr, "deserialize_request: malloc failed!\n");
     return PROTOCOL_ERR;
   }
-  if (verify_packet(buf, req_len) != PROTOCOL_OK) {
+  if (verify_packet(buf, buf_len) != PROTOCOL_OK) {
     return PROTOCOL_INVALID_PACKET_LENGTH;
   } else {
-    memcpy(req, buf, req_len);
+    memcpy(req, buf, buf_len);
     return PROTOCOL_OK;
   }
 }
@@ -47,7 +46,7 @@ void protocol_handle_response(unsigned char pck[BUF_SIZE], ssize_t pck_len,
   if (deserialize_request(pck, pck_len, &received_req) != PROTOCOL_OK) {
     fprintf(stderr, "Deserialization of received packed failed!\n");
   }
-  memcpy(&received_req, pck, pck_len);
+
   PROTOCOL_CODE res_status = received_req.header.response_status;
   if (res_status != PROTOCOL_OK) {
     fprintf(stderr, "An error occured from server!\n");

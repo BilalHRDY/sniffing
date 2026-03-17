@@ -30,7 +30,7 @@ static void read_input(input_buffer_t *input_buf) {
   printf("read_input : bytes_read: %zu\n", bytes_read);
   // Ignore trailing newline
   input_buf->input_length = bytes_read - 1;
-  input_buf->buffer[bytes_read - 1] = 0;
+  input_buf->buffer[bytes_read - 1] = '\0';
 }
 
 // Move this function in command.c ?
@@ -49,11 +49,10 @@ CLIENT_CODE build_cmd_for_request(char *input, protocol_request_t *req) {
 }
 
 void input_handler(char *input, data_to_send_t *data_to_send) {
-  protocol_request_t *req = (protocol_request_t *)data_to_send->data;
-  req->header.body_len = 0;
-  build_cmd_for_request(input, req);
-
-  data_to_send->len = sizeof(header_t) + req->header.body_len;
+  protocol_request_t req = {0};
+  build_cmd_for_request(input, &req);
+  memcpy(data_to_send->data, &req, sizeof(header_t) + req.header.body_len);
+  data_to_send->len = sizeof(header_t) + req.header.body_len;
 }
 
 int init_client(char *sock_path,
