@@ -6,7 +6,7 @@
 
 // TODO : input_handler_t doit il rester ici ? s
 
-int init_socket(char *sock_path);
+int init_socket();
 
 int write_and_read(int sfd, data_to_send_t *data_to_send,
                    data_received_t *data_received);

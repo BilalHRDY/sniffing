@@ -1,7 +1,7 @@
-#include "lib/db.h"
 #include "lib/ipc/socket/server/socket_server.h"
-#include "lib/request_handler.h"
-#include "lib/types.h"
+// #include "lib/request_handler.h"
+#include "lib/sniffing/db/db.h"
+#include "lib/sniffing/sniffing.h"
 #include <arpa/inet.h>
 #include <pcap/pcap.h>
 #include <pthread.h>
@@ -48,20 +48,13 @@ int main() {
 
   ctx->sessions_table = ht_create();
   ctx->packet_queue = init_queue();
-  ctx->request_handler = request_handler;
+  // ctx->request_handler = request_handler;
 
   init_ip_to_domain_from_db(ip_to_domain, db);
   ctx->paused = 1;
   printf("ctx->paused: %d\n", ctx->paused);
 
-  protocol_ctx_t protocol_ctx = {.request_handler = request_handler,
-                                 .user_data = (unsigned char *)ctx};
-
-  packet_handler_server_ctx_t packet_handler_server_ctx = {
-      .packet_handle_request = protocol_handle_request,
-      .packet_ctx = (void *)&protocol_ctx};
-
-  pthread_t *server_thread = init_server(&packet_handler_server_ctx);
+  pthread_t *server_thread = init_server_thread(ctx);
   init_pcap(ctx);
 
   int pcap_thread_res =

@@ -17,7 +17,7 @@ PATH_BUILD_TEST_OBJ = build/test/objs/
 PATH_BUILD_SAN = build/sanitizer/
 PATH_BUILD_SAN_OBJ = build/sanitizer/objs/
 
-# Be careful, '**/*' pattern is not recursive
+# Be careful, don't use '**/*' pattern because it's not recursive
 SERVER_LIB = \
     $(wildcard lib/*.c) \
     $(wildcard lib/command/*.c) \

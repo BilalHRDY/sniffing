@@ -1,5 +1,5 @@
 #include "cmd_serializer.h"
-#include "../sniffing.h"
+#include "../sniffing/sniffing.h"
 #include "cmd.h"
 #include <stdio.h>
 #include <stdlib.h>

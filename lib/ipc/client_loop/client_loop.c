@@ -55,15 +55,9 @@ void input_handler(char *input, data_to_send_t *data_to_send) {
   data_to_send->len = sizeof(header_t) + req.header.body_len;
 }
 
-int init_client(char *sock_path,
-                packet_handler_client_ctx_t *packet_handler_client_ctx) {
+int init_client() {
 
-  packet_handle_response_t packet_handle_response =
-      packet_handler_client_ctx->packet_handle_response;
-
-  void *ctx = packet_handler_client_ctx->packet_ctx;
-
-  int sfd = init_socket(sock_path);
+  int sfd = init_socket();
   input_buffer_t input_buf = new_input_buffer();
   printf("  ____  _   _ ___ _____ _____ ___ _   _  ____ \n"
          " / ___|| \\ | |_ _|  ___|  ___|_ _| \\ | |/ ___|\n"
@@ -90,6 +84,11 @@ int init_client(char *sock_path,
     data_received_t data_received;
     write_and_read(sfd, &data_to_send, &data_received);
 
-    packet_handle_response(data_received.data, data_received.len, ctx);
+    // Transform packet to request
+    protocol_request_t received_req;
+    protocol_handle_response(data_received.data, data_received.len,
+                             &received_req);
+
+    handle_cmd_response(&received_req);
   }
 }

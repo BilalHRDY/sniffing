@@ -10,10 +10,10 @@ typedef void (*packet_handle_request_t)(unsigned char buf[BUF_SIZE],
                                         void *data);
 
 typedef struct packet_handler_server_ctx {
-  packet_handle_request_t packet_handle_request;
   void *packet_ctx;
+  // packet_handle_request_t packet_handle_request;
 } packet_handler_server_ctx_t;
 
-pthread_t *init_server(packet_handler_server_ctx_t *packet_handler_server_ctx);
+int init_server();
 
 #endif

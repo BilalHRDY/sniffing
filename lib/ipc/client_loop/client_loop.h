@@ -1,6 +1,6 @@
-#ifndef CLIENT_LIB_H
-#define CLIENT_LIB_H
-#include "../ipc/socket/socket_common.h"
+#ifndef CLIENT_LOOP_H
+#define CLIENT_LOOP_H
+#include "../socket/socket_common.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -25,7 +25,6 @@ typedef struct packet_handler_client_ctx {
   void *packet_ctx;
 } packet_handler_client_ctx_t;
 
-int init_client(char *sock_path,
-                packet_handler_client_ctx_t *packet_handler_client_ctx);
+int init_client();
 
 #endif

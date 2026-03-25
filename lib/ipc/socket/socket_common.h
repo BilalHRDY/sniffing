@@ -16,4 +16,9 @@ typedef struct data_received {
 
 } data_received_t;
 
+typedef struct thread_config {
+  int sfd;
+  void *ctx;
+} thread_config_t;
+
 #endif

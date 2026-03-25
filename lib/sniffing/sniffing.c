@@ -1,8 +1,8 @@
 #include "./sniffing.h"
 #include "./db.h"
-#include "./ip.h"
+#include "./ip/ip.h"
 #include "./utils/string/string_helpers.h"
-#include "types.h"
+#include "sniffing.h"
 #include "utils/data_structures/hashmap.h"
 #include <pthread.h>
 #include <stdio.h>
@@ -266,34 +266,6 @@ void init_pcap(context_t *ctx) {
     exit(EXIT_FAILURE);
   }
 };
-
-// PCAP + cache + filter
-void *pcap_runner_thread(void *data) {
-  context_t *ctx = (context_t *)data;
-
-  // printf("thread lock\n");
-  pthread_mutex_lock(&ctx->mutex2);
-  // printf("thread in lock\n");
-
-  while (1) {
-
-    while (ctx->paused) {
-      printf("pcap is paused\n");
-      pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
-    }
-    printf("pcap is starting....\n");
-    while (!ctx->paused) {
-
-      pthread_mutex_unlock(&ctx->mutex2);
-      pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
-      pthread_mutex_lock(&ctx->mutex2);
-    }
-  }
-
-  pthread_mutex_unlock(&ctx->mutex2);
-  // printf("end of thread\n");
-  return NULL;
-}
 
 // PCAP + cache + filter
 SNIFFING_API add_hosts_to_listen(char *domains[], int len,

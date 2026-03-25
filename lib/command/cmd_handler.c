@@ -1,4 +1,5 @@
-#include "../types.h"
+#include "./cmd_handler.h"
+#include "../sniffing/sniffing.h"
 #include "../utils/string/string_helpers.h"
 #include "cmd.h"
 #include "cmd_serializer.h"

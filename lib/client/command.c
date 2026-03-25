@@ -1,6 +1,6 @@
 #include "./command.h"
 #include "../command/cmd.h"
-#include "../sniffing.h"
+#include "../sniffing/sniffing.h"
 #include "./command.h"
 #include "./printer.h"
 #include "./session.h"

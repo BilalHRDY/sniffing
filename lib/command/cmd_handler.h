@@ -2,7 +2,7 @@
 #define CMD_HANDLER_H
 // enlever cette dépendance
 #include "../ipc/protocol/protocol.h"
-#include "../sniffing.h"
+#include "../sniffing/sniffing.h"
 #include "cmd.h"
 
 SNIFFING_API process_raw_cmd(char *raw_cmd, int raw_cmd_len,

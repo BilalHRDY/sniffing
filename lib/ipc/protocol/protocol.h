@@ -40,10 +40,10 @@ typedef void (*protocol_handle_response_t)(unsigned char buf[BUF_SIZE],
 typedef void (*response_handler_t)(protocol_request_t *req);
 
 void protocol_handle_request(unsigned char buf[BUF_SIZE], ssize_t req_len,
-                             data_to_send_t *data_to_send, void *data);
+                             protocol_request_t *received_req);
 
 void protocol_handle_response(unsigned char buf[BUF_SIZE], ssize_t res_len,
-                              void *data);
+                              protocol_request_t *request);
 
 PROTOCOL_CODE verify_packet(unsigned char buf[BUF_SIZE], ssize_t pck_len);
 

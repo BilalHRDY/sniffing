@@ -1,8 +1,5 @@
-#include "../socket_common.h"
-#include "socket_server.h"
-#include "socket_server_thread.h"
+#include "./socket_server.h"
 #include <errno.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,31 +8,9 @@
 
 #define BACKLOG 3
 
-typedef struct thread_config {
-  int sfd;
-  packet_handler_server_ctx_t *packet_handler_client_ctx;
-} thread_config_t;
-
-static pthread_t *
-launch_thread(int sfd, packet_handler_server_ctx_t *packet_handler_client_ctx) {
-
-  pthread_t *server_thread = malloc(sizeof(pthread_t));
-
-  thread_config_t *thread_config = malloc(sizeof(thread_config_t));
-  *thread_config = (thread_config_t){
-      .sfd = sfd, packet_handler_client_ctx = packet_handler_client_ctx};
-
-  int server_thread_res =
-      pthread_create(server_thread, NULL, socket_server_thread, thread_config);
-
-  if (server_thread_res) {
-    fprintf(stderr, "error while creating server thread!\n");
-    exit(EXIT_FAILURE);
-  }
-  return server_thread;
-}
-
-pthread_t *init_server(packet_handler_server_ctx_t *server_args) {
+// TODO: inverser l'appel des fonctions ? launch_thread -> init_server ->
+// socket_server_thread
+int init_server() {
 
   struct sockaddr_un addr;
 
@@ -70,6 +45,5 @@ pthread_t *init_server(packet_handler_server_ctx_t *server_args) {
     perror("Error listening on server socket");
     exit(EXIT_FAILURE);
   }
-
-  return launch_thread(sfd, server_args);
+  return sfd;
 }

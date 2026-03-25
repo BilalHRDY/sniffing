@@ -1,7 +1,7 @@
 #ifndef SESSION_H
 #define SESSION_H
 
-#include "../sniffing.h"
+#include "../sniffing/sniffing.h"
 
 typedef struct session_store {
   int sessions_len;

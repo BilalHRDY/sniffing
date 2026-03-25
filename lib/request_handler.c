@@ -1,18 +1,19 @@
-#include "request_handler.h"
-#include "command/cmd_handler.h"
+// #include "request_handler.h"
+// #include "command/cmd_handler.h"
 #include <stdio.h>
 #include <string.h>
 
-void request_handler(protocol_request_t *req, protocol_request_t *res,
-                     unsigned char *user_data) {
+// void request_handler(protocol_request_t *req, protocol_request_t *res,
+//                      unsigned char *user_data) {
 
-  char cmd_res[DATA_SIZE];
-  unsigned int cmd_res_size;
+//   char cmd_res[DATA_SIZE];
+//   unsigned int cmd_res_size;
 
-  SNIFFING_API rc = process_raw_cmd(req->body, req->header.body_len, &(cmd_res),
-                                    &(cmd_res_size), user_data);
+//   SNIFFING_API rc = process_raw_cmd(req->body, req->header.body_len,
+//   &(cmd_res),
+//                                     &(cmd_res_size), user_data);
 
-  memcpy(res->body, &rc, sizeof(SNIFFING_API));
-  memcpy(res->body + sizeof(SNIFFING_API), &cmd_res, cmd_res_size);
-  res->header.body_len = sizeof(SNIFFING_API) + cmd_res_size;
-};
+//   memcpy(res->body, &rc, sizeof(SNIFFING_API));
+//   memcpy(res->body + sizeof(SNIFFING_API), &cmd_res, cmd_res_size);
+//   res->header.body_len = sizeof(SNIFFING_API) + cmd_res_size;
+// };

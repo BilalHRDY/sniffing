@@ -1,13 +1,24 @@
-#ifndef TYPES_H
-#define TYPES_H
-#include "request_handler.h"
-#include "sniffing.h"
-#include "utils/data_structures/hashmap.h"
-#include "utils/data_structures/queue.h"
+#ifndef SNIFFING_H
+#define SNIFFING_H
+#include "../utils/data_structures/hashmap.h"
+#include "../utils/data_structures/queue.h"
 #include <pcap/pcap.h>
 #include <sqlite3.h>
 
 #define SESSION_REINIT_INTERVAL 20
+
+typedef enum {
+  SNIFFING_OK = 0,
+  SNIFFING_INTERNAL_ERROR,
+  SNIFFING_TOO_MANY_ARGUMENTS,
+  SNIFFING_EMPTY_ARGS,
+  SNIFFING_COMMAND_NOT_KNOWN,
+  SNIFFING_HOSTNAME_NOT_KNOWN,
+  SNIFFING_NO_HOSTNAME_IN_DB,
+  SNIFFING_MEMORY_ERROR,
+
+} SNIFFING_API;
+
 typedef struct pcap_session {
   char *hostname;
   time_t first_visit;
@@ -36,13 +47,19 @@ typedef struct context {
   domain_cache_t *domain_cache;
   ht *sessions_table;
   queue *packet_queue;
-  request_handler_t request_handler;
 } context_t;
 
 typedef struct full_packet {
   const struct pcap_pkthdr *header;
   const u_char *packet;
 } full_packet_t;
+
+typedef struct session_stats {
+  // TODO : hostname_len utile ?
+  int hostname_len;
+  char *hostname;
+  int total_duration;
+} session_stats_t;
 
 void *pcap_runner_thread(void *data);
 void *packet_queue_thread(void *data);

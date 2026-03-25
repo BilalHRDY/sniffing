@@ -1,4 +1,5 @@
 #include "./socket_client.h"
+#include "../server/socket_server.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,7 +7,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-int init_socket(char *sock_path) {
+int init_socket() {
 
   struct sockaddr_un addr;
   ssize_t numRead;
@@ -22,7 +23,7 @@ int init_socket(char *sock_path) {
 
   memset(&addr, 0, sizeof(struct sockaddr_un));
   addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, sock_path, sizeof(addr.sun_path) - 1);
+  strncpy(addr.sun_path, SV_SOCK_PATH, sizeof(addr.sun_path) - 1);
 
   if (connect(sfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) ==
       -1) {

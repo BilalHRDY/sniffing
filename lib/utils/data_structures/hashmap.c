@@ -1,10 +1,8 @@
 #include "hashmap.h"
-#include "../../types.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-// #include <stdlib.h>
 
 #define FNV_OFFSET 14695981039346656037UL
 #define FNV_PRIME 1099511628211UL
@@ -14,23 +12,6 @@ void print_hash_table(ht *table) {
     if (table->items[i].value != NULL)
       printf("key: %s, value: %s\n", table->items[i].key,
              (char *)table->items[i].value);
-    else
-      printf("key: %s, value: %p\n", table->items[i].key,
-             table->items[i].value);
-  printf("\n");
-}
-
-void print_session_table(ht *table) {
-  for (int i = 0; i < table->capacity; i++)
-    if (table->items[i].value != NULL) {
-      printf("key: %s, value: %p -> ", table->items[i].key,
-             (pcap_session_t *)table->items[i].value);
-      printf("{first_visit: %ld,last_visit: %ld, time_to_save %d}\n",
-             ((pcap_session_t *)table->items[i].value)->first_visit,
-             ((pcap_session_t *)table->items[i].value)->last_visit,
-             ((pcap_session_t *)table->items[i].value)->time_to_save);
-    }
-
     else
       printf("key: %s, value: %p\n", table->items[i].key,
              table->items[i].value);
@@ -50,12 +31,6 @@ void ht_destroy(ht *table) {
   free(table);
 }
 
-// table->capacity = 3
-// key = 'c' => get_index = 0
-// 'a', 'b' ,'c'
-
-// key = 'c' => get_index = 1
-// 'c', 'a' ,'b'
 static uint64_t hash(const char *key) {
   uint64_t hash = FNV_OFFSET;
   for (const char *p = key; *p; p++) {
