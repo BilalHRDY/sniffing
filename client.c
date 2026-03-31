@@ -1,4 +1,4 @@
-#include "./lib/client/client-lib.h"
+#include "./lib/ipc/client_loop/client_loop.h"
 
 int main(int argc, char *argv[]) {
 

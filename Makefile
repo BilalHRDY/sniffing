@@ -21,10 +21,14 @@ PATH_BUILD_SAN_OBJ = build/sanitizer/objs/
 SERVER_LIB = \
     $(wildcard lib/*.c) \
     $(wildcard lib/command/*.c) \
+    $(wildcard lib/sniffing/*.c) \
+    $(wildcard lib/sniffing/db/*.c) \
+    $(wildcard lib/sniffing/ip/*.c) \
+    $(wildcard lib/threads/*.c) \
     $(wildcard lib/utils/*.c) \
-    $(wildcard lib/utils/calc/*.c) \
     $(wildcard lib/utils/string/*.c) \
     $(wildcard lib/utils/data_structures/*.c) \
+    $(wildcard lib/ipc/server_loop/*.c) \
     $(wildcard lib/ipc/socket/server/*.c) \
     $(wildcard lib/ipc/protocol/*.c) \
 
@@ -40,6 +44,7 @@ CLIENT_LIB = \
     lib/command/cmd_builder.c \
     $(wildcard lib/utils/string/*.c) \
     $(wildcard lib/ipc/socket/client/*.c) \
+    $(wildcard lib/ipc/client_loop/*.c) \
     $(wildcard lib/ipc/protocol/*.c) \
     $(wildcard lib/client/*.c) \
 

@@ -1,9 +1,9 @@
 #include "./sniffing.h"
-#include "./db.h"
+#include "../utils/data_structures/hashmap.h"
+#include "../utils/string/string_helpers.h"
+#include "./db/db.h"
 #include "./ip/ip.h"
-#include "./utils/string/string_helpers.h"
 #include "sniffing.h"
-#include "utils/data_structures/hashmap.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +51,7 @@ pcap_session_t *create_session(time_t timestamp, char *hostname) {
   return s;
 }
 
-void *packet_queue_thread(void *data) {
+void *packet_queue_loop(void *data) {
   printf("------------------ packet_thread ------------------ \n");
 
   context_t *ctx = (context_t *)data;
@@ -100,6 +100,31 @@ void *packet_queue_thread(void *data) {
       free(full_p);
     }
   }
+}
+
+// PCAP + cache + filter
+void *pcap_runner_loop(void *data) {
+  context_t *ctx = (context_t *)data;
+
+  pthread_mutex_lock(&ctx->mutex2);
+
+  while (1) {
+
+    while (ctx->paused) {
+      printf("pcap is paused\n");
+      pthread_cond_wait(&ctx->condition2, &ctx->mutex2);
+    }
+    printf("pcap is starting....\n");
+    while (!ctx->paused) {
+
+      pthread_mutex_unlock(&ctx->mutex2);
+      pcap_dispatch(ctx->handle, -1, packet_handler, (u_char *)ctx);
+      pthread_mutex_lock(&ctx->mutex2);
+    }
+  }
+
+  pthread_mutex_unlock(&ctx->mutex2);
+  return NULL;
 }
 
 void packet_handler(u_char *user, const struct pcap_pkthdr *header,

@@ -1,4 +1,5 @@
 #include "lib/ipc/socket/server/socket_server.h"
+#include "lib/threads/threads_init.h"
 // #include "lib/request_handler.h"
 #include "lib/sniffing/db/db.h"
 #include "lib/sniffing/sniffing.h"
@@ -17,10 +18,6 @@ int main() {
   char *errmsg;
   int rc;
   const char *sql;
-  // int db_writer_thread_res;
-  // pthread_t db_writer_thread;
-  pthread_t pcap_thread;
-  pthread_t packet_thread;
 
   context_t *ctx = malloc(sizeof(context_t));
   if (ctx == NULL) {
@@ -54,24 +51,14 @@ int main() {
   ctx->paused = 1;
   printf("ctx->paused: %d\n", ctx->paused);
 
-  pthread_t *server_thread = init_server_thread(ctx);
+  pthread_t *pcap_thread;
+  pthread_t *packet_queue_thread;
+  pthread_t *server_thread;
+
   init_pcap(ctx);
-
-  int pcap_thread_res =
-      pthread_create(&pcap_thread, NULL, pcap_runner_thread, ctx);
-
-  if (pcap_thread_res) {
-    fprintf(stderr, "error while creating pcap_thread thread!\n");
-    exit(EXIT_FAILURE);
-  }
-
-  int packet_queue_thread_res =
-      pthread_create(&packet_thread, NULL, packet_queue_thread, ctx);
-
-  if (packet_queue_thread_res) {
-    fprintf(stderr, "error while creating packet_queue_thread thread!\n");
-    exit(EXIT_FAILURE);
-  }
+  pcap_thread = init_pcap_thread(ctx);
+  packet_queue_thread = init_packet_queue_thread(ctx);
+  server_thread = init_server_thread(ctx);
 
   // #include <unistd.h>
   //   usleep(3000000);
@@ -81,11 +68,12 @@ int main() {
   }
 
   // Bloquant
-  // pthread_join(db_writer_thread, NULL);
-  pthread_join(pcap_thread, NULL);
+  pthread_join(*pcap_thread, NULL);
   pthread_join(*server_thread, NULL);
+  pthread_join(*packet_queue_thread, NULL);
+  free(pcap_thread);
   free(server_thread);
-  pthread_join(pcap_thread, NULL);
+  free(packet_queue_thread);
 
   pthread_mutex_destroy(&ctx->mutex);
   pthread_cond_destroy(&ctx->pck_cond);
@@ -95,7 +83,6 @@ int main() {
   ht_destroy(ctx->sessions_table);
   pcap_freecode(ctx->bpf);
   free(ctx->db);
-  free(ctx->db_writer_thread);
   free(ctx);
   free(ctx->packet_queue);
   free(ctx->mask);

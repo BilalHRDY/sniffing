@@ -1,4 +1,4 @@
-// #include "../../../request_handler.h"
+#include "../../command/cmd_handler.h"
 #include "../../sniffing/sniffing.h"
 #include "../protocol/protocol.h"
 #include "../socket/socket_common.h"
@@ -15,7 +15,7 @@ void request_handler(char *data, size_t data_len, protocol_request_t *res,
   unsigned int cmd_res_size;
 
   SNIFFING_API rc =
-      process_raw_cmd(data, data_len, &(cmd_res), &(cmd_res_size), user_data);
+      process_raw_cmd(data, data_len, cmd_res, &(cmd_res_size), user_data);
 
   memcpy(res->body, &rc, sizeof(SNIFFING_API));
   memcpy(res->body + sizeof(SNIFFING_API), &cmd_res, cmd_res_size);

@@ -43,7 +43,6 @@ typedef struct context {
   pthread_mutex_t mutex2;
   pthread_cond_t pck_cond;
   pthread_cond_t condition2;
-  pthread_t *db_writer_thread;
   domain_cache_t *domain_cache;
   ht *sessions_table;
   queue *packet_queue;
@@ -61,12 +60,14 @@ typedef struct session_stats {
   int total_duration;
 } session_stats_t;
 
-void *pcap_runner_thread(void *data);
-void *packet_queue_thread(void *data);
+// loops
+void *packet_queue_loop(void *data);
+void *pcap_runner_loop(void *data);
 
 // pcap
 void init_pcap(context_t *ctx);
-// SNIFFING_API build_filter_from_ip_to_domain(ht *ip_to_domain, char **filter);
+void packet_handler(u_char *user, const struct pcap_pkthdr *header,
+                    const u_char *packet);
 
 // API
 SNIFFING_API init_ip_to_domain_from_db(ht *ip_to_domain, sqlite3 *db);

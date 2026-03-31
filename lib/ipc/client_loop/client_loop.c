@@ -1,11 +1,11 @@
-#include "./client-lib.h"
-#include "../command/cmd_builder.h"
-#include "../command/cmd_serializer.h"
-#include "../ipc/protocol/protocol.h"
-#include "../ipc/socket/client/socket_client.h"
-#include "../utils/string/dynamic_string.h"
-#include "../utils/string/string_helpers.h"
-#include "./command.h"
+#include "./client_loop.h"
+#include "../../client/command.h"
+#include "../../command/cmd_builder.h"
+#include "../../command/cmd_serializer.h"
+#include "../../utils/string/dynamic_string.h"
+#include "../../utils/string/string_helpers.h"
+#include "../protocol/protocol.h"
+#include "../socket/client/socket_client.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,7 +84,6 @@ int init_client() {
     data_received_t data_received;
     write_and_read(sfd, &data_to_send, &data_received);
 
-    // Transform packet to request
     protocol_request_t received_req;
     protocol_handle_response(data_received.data, data_received.len,
                              &received_req);
